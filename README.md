@@ -222,15 +222,15 @@ Fields not applicable to a given event type (e.g. `impression_id` on a `conversi
 | # | Story |
 |---|---|
 | 1 | Design the Affiliate Junction event schema ✅ |
-| 2 | Write a Python producer script that generates synthetic Affiliate Junction events and publishes to Confluent at a configurable rate |
-| 3 | Validate producer script connects to Confluent Platform and publishes successfully |
+| 2 | Write a Python producer script that generates synthetic Affiliate Junction events and publishes to Confluent at a configurable rate ✅ |
+| 3 | Validate producer script connects to Confluent Platform and publishes successfully ✅ |
 
 ### Epic 2 — MCP Ingestion Server
 
 | # | Story |
 |---|---|
-| 4 | Stand up a local Python environment with the MCP SDK and Confluent Kafka client installed |
-| 5 | Implement an MCP server with a single tool: `subscribe_and_ingest` — connects to the Confluent topic, consumes a batch of messages, returns them as structured data |
+| 4 | Stand up a local Python environment with the MCP SDK and Confluent Kafka client installed ✅ |
+| 5 | Implement an MCP server with a single tool: `subscribe_and_ingest` — connects to the Confluent topic, consumes a batch of messages, returns them as structured data ✅ |
 | 6 | Validate the MCP server tool is discoverable and callable from Claude Desktop |
 | 7 | Add a transformation step: raw JSON events → flattened Iceberg-compatible schema (cast types, add `ingested_at` timestamp) |
 
@@ -255,12 +255,65 @@ Fields not applicable to a given event type (e.g. `impression_id` on a `conversi
 
 ```
 agentic-ai-data-pipeline-workshop/
-├── README.md                  # This file
-├── producer/                  # Kafka producer script (Story 2–3)
-├── mcp-ingestion-server/      # MCP ingestion server (Story 4–7)
-├── mcp-query-server/          # MCP query server / NL interface (Exercise 3)
-├── schema/                    # Iceberg DDL and event schema definitions
-└── lab-guide/                 # Attendee-facing Jupyter notebooks
+├── README.md                   # This file
+├── run_tests.sh                # Test runner (unit + integration)
+├── pytest.ini                  # pytest configuration
+├── pyproject.toml              # uv project — dependencies and entry points
+├── kafka-ca.crt                # TechZone Confluent Platform CA cert (gitignored)
+├── producer/                   # Kafka producer (Stories 1–3)
+├── mcp_ingestion_server/       # MCP ingestion server (Stories 4–7)
+├── mcp-query-server/           # MCP query server / NL interface (Exercise 3)
+├── schema/                     # Iceberg DDL and event schema definitions
+├── tests/                      # Test suite
+└── lab-guide/                  # Attendee-facing Jupyter notebooks
+```
+
+---
+
+## Development
+
+### Setup
+
+```bash
+# Install uv (if not already installed)
+brew install uv
+
+# Install dependencies and create virtualenv
+uv sync
+
+# Download the TechZone CA cert (replace <vm-ip> with your environment's IP)
+scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt kafka-ca.crt
+
+# Configure credentials
+cp producer/env-sample producer/.env
+cp mcp_ingestion_server/env-sample mcp_ingestion_server/.env
+# Edit both .env files with your TechZone broker address and credentials
+```
+
+### Running
+
+```bash
+# Start the Kafka producer (publishes events continuously, Ctrl-C to stop)
+uv run producer
+
+# Start the MCP ingestion server (connect via Claude Desktop)
+uv run mcp-ingestion-server
+```
+
+### Testing
+
+```bash
+# Unit tests only — no external services needed
+./run_tests.sh
+
+# Unit + integration tests — requires live Kafka with events in the topic
+./run_tests.sh --all
+
+# Lint only
+./run_tests.sh --lint
+
+# Lint + unit + integration
+./run_tests.sh --full
 ```
 
 ---
@@ -268,6 +321,7 @@ agentic-ai-data-pipeline-workshop/
 ## Prerequisites
 
 - Python 3.11+
+- `uv` ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - Access to the TechZone environment (credentials provided at lab start)
-- Claude Desktop (for MCP tool validation in Stories 6 and 9)
+- Claude Desktop (for MCP tool validation in Story 6)
 - No prior MCP experience required
