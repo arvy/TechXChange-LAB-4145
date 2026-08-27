@@ -18,11 +18,11 @@ KAFKA_SASL_MECHANISM=
 KAFKA_SASL_USERNAME=
 KAFKA_SASL_PASSWORD=
 
-# Path to the CA certificate for SSL verification.
+# Path to the CA certificate for SSL verification (relative to project root).
 # Required for self-signed broker certs (e.g. TechZone Confluent Platform VM).
-# Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt ./kafka-ca.crt
+# Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt kafka-ca.crt
 # Leave empty to use system CA store (e.g. Confluent Cloud).
-KAFKA_SSL_CA_LOCATION=
+KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 # ---------------------------------------------------------------------------
 # Traffic generation settings (match affiliate-junction-demo defaults)

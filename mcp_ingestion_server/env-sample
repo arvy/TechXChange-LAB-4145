@@ -1,0 +1,15 @@
+# ---------------------------------------------------------------------------
+# Confluent Platform / Kafka connection
+# (same broker settings as producer — copy from producer/env-sample)
+# ---------------------------------------------------------------------------
+
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_TOPIC=affiliate-junction-events
+KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+KAFKA_SASL_MECHANISM=
+KAFKA_SASL_USERNAME=
+KAFKA_SASL_PASSWORD=
+
+# Path to CA cert — required for TechZone Confluent Platform (relative to project root).
+# Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt kafka-ca.crt
+KAFKA_SSL_CA_LOCATION=kafka-ca.crt

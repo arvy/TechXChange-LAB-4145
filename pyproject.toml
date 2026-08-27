@@ -17,6 +17,8 @@ mcp-ingestion-server = "mcp_ingestion_server.server:run"
 
 [dependency-groups]
 dev = [
+    "pytest>=9.1.1",
+    "pytest-env>=1.7.0",
     "ruff>=0.8.0",
 ]
 

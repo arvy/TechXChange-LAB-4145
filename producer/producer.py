@@ -16,7 +16,7 @@ import signal
 import time
 import uuid
 from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from confluent_kafka import Producer
 from dotenv import load_dotenv
@@ -171,7 +171,7 @@ def make_envelope(event_type, payload):
     return {
         "event_id": str(uuid.uuid4()),
         "event_type": event_type,
-        "event_timestamp": datetime.now(timezone.utc).isoformat(),
+        "event_timestamp": datetime.now(UTC).isoformat(),
         "schema_version": SCHEMA_VERSION,
         "payload": payload,
     }
@@ -314,7 +314,7 @@ def run():
     while running:
         cycle_start = time.time()
         cycle += 1
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         impression_count = 0
         conversion_count = 0
