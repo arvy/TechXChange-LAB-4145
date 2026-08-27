@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# Confluent Platform / Kafka connection
+# ---------------------------------------------------------------------------
+
+# Broker address — for Confluent Platform on a VM this is typically host:9092
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# Topic to publish events to
+KAFKA_TOPIC=affiliate-junction-events
+
+# Security — set to PLAINTEXT for a local Confluent Platform VM with no auth
+# For Confluent Cloud use: SASL_SSL
+KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+
+# SASL settings — only needed when KAFKA_SECURITY_PROTOCOL != PLAINTEXT
+# For Confluent Cloud: PLAIN
+KAFKA_SASL_MECHANISM=
+KAFKA_SASL_USERNAME=
+KAFKA_SASL_PASSWORD=
+
+# Path to the CA certificate for SSL verification.
+# Required for self-signed broker certs (e.g. TechZone Confluent Platform VM).
+# Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt ./kafka-ca.crt
+# Leave empty to use system CA store (e.g. Confluent Cloud).
+KAFKA_SSL_CA_LOCATION=
+
+# ---------------------------------------------------------------------------
+# Traffic generation settings (match affiliate-junction-demo defaults)
+# ---------------------------------------------------------------------------
+
+AFFILIATE_JUNCTION_ADVERTISERS_COUNT=500
+AFFILIATE_JUNCTION_PUBLISHERS_COUNT=1000
+AFFILIATE_JUNCTION_COOKIES_COUNT=5000
+AFFILIATE_JUNCTION_HISTORY_MINS=90
+
+# Events published per cycle
+AFFILIATE_JUNCTION_TRAFFIC_MIN=5000
+AFFILIATE_JUNCTION_SALES_MIN=500
+
+# Seconds between publish cycles (default 60 = ~real-time 1-minute cadence)
+AFFILIATE_JUNCTION_CYCLE_SECONDS=60
+
+# ---------------------------------------------------------------------------
+# Fraud and cohort simulation
+# ---------------------------------------------------------------------------
+
+AFFILIATE_JUNCTION_FRAUD_COOKIES_COUNT=5
+AFFILIATE_JUNCTION_COHORTS=TECH,FASHION,HEALTH,FINANCE,TRAVEL
+
+# Must sum to ≤ 1.0; remainder is the random-cookie probability
+AFFILIATE_JUNCTION_COHORT_SAME_PROBABILITY=0.60
+AFFILIATE_JUNCTION_COHORT_DIFFERENT_PROBABILITY=0.20
+AFFILIATE_JUNCTION_FRAUD_CROSS_CONTAMINATION_PROBABILITY=0.05
