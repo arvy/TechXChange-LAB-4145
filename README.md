@@ -231,8 +231,8 @@ Fields not applicable to a given event type (e.g. `impression_id` on a `conversi
 |---|---|
 | 4 | Stand up a local Python environment with the MCP SDK and Confluent Kafka client installed ✅ |
 | 5 | Implement an MCP server with a single tool: `subscribe_and_ingest` — connects to the Confluent topic, consumes a batch of messages, returns them as structured data ✅ |
-| 6 | Validate the MCP server tool is discoverable and callable from Claude Desktop |
-| 7 | Add a transformation step: raw JSON events → flattened Iceberg-compatible schema (cast types, add `ingested_at` timestamp) |
+| 6 | Validate the MCP server tool is discoverable and callable from Claude Desktop ✅ |
+| 7 | Add a transformation step: raw JSON events → flattened Iceberg-compatible schema (cast types, add `ingested_at` timestamp) — deferred |
 
 ### Epic 3 — watsonx.data Landing
 
