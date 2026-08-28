@@ -13,3 +13,23 @@ KAFKA_SASL_PASSWORD=
 # Path to CA cert — required for TechZone Confluent Platform (relative to project root).
 # Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt kafka-ca.crt
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
+
+# ---------------------------------------------------------------------------
+# watsonx.data (Presto / Iceberg write)
+# ---------------------------------------------------------------------------
+
+# Base URL of the watsonx.data instance API (no trailing slash)
+# Format: https://<console-host>/lakehouse/api
+WATSONX_DATA_BASE_URL=
+
+# IBM Cloud API key — must have Manager role on the watsonx.data instance
+WATSONX_DATA_API_KEY=
+
+# Instance CRN — from IBM Cloud resource list
+WATSONX_DATA_INSTANCE_ID=
+
+# Presto engine ID to use for INSERT jobs (from list_engines)
+WATSONX_DATA_ENGINE_ID=presto44
+
+# Target Iceberg table for ingestion
+WATSONX_DATA_TARGET_TABLE=my_data.affiliate_junction.kafka_events

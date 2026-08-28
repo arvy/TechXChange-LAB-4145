@@ -8,6 +8,8 @@ Claude Desktop or any MCP-compatible client.
 Tools:
   subscribe_and_ingest  — consume a batch from the Affiliate Junction
                           Kafka topic and return structured events.
+  ingest_to_iceberg     — consume a batch from Kafka and write rows
+                          directly into the watsonx.data Iceberg table.
 """
 
 import json
@@ -15,6 +17,7 @@ import logging
 import os
 import time
 
+import requests
 from confluent_kafka import Consumer, KafkaError, KafkaException
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -184,6 +187,230 @@ def subscribe_and_ingest(
         "topic":             topic,
         "consumer_group_id": consumer_group_id,
         "errors":            errors,
+    }
+
+
+# ---------------------------------------------------------------------------
+# watsonx.data helpers
+# ---------------------------------------------------------------------------
+
+def _get_iam_token() -> str:
+    """Exchange an IBM Cloud API key for a short-lived IAM bearer token."""
+    api_key = os.getenv("WATSONX_DATA_API_KEY", "")
+    resp = requests.post(
+        "https://iam.cloud.ibm.com/identity/token",
+        data={
+            "grant_type": "urn:ibm:params:oauth:grant-type:apikey",
+            "apikey": api_key,
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def _run_sql_job(sql: str, engine_id: str, token: str) -> dict:
+    """Submit a SQL statement to watsonx.data via the Presto gateway and poll until complete.
+
+    Uses the /v3/v1/statement endpoint (Presto HTTP API proxy) which is available
+    on all watsonx.data SaaS instances regardless of version.
+    """
+    base_url    = os.getenv("WATSONX_DATA_BASE_URL", "").rstrip("/")
+    instance_id = os.getenv("WATSONX_DATA_INSTANCE_ID", "")
+
+    headers = {
+        "Authorization":  f"Bearer {token}",
+        "AuthInstanceId": instance_id,
+        "Content-Type":   "application/json",
+        "Accept":         "application/json",
+    }
+
+    # Derive catalog from target table (first component of fully-qualified name)
+    catalog = os.getenv("WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events").split(".")[0]
+    schema  = os.getenv("WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events").split(".")[1]
+
+    path = f"{base_url}/v3/v1/statement?engine_id={engine_id}"
+
+    # Submit
+    resp = requests.post(
+        path,
+        headers=headers,
+        json={
+            "source":            "mcp-ingestion-server",
+            "catalog":           catalog,
+            "schema":            schema,
+            "sqlQuery":          sql,
+            "prepared_statement": "",
+            "session":           "",
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data     = resp.json().get("data", {}) or {}
+    query_id = data.get("id")
+    next_uri = data.get("nextUri", "")
+    state    = (data.get("stats") or {}).get("state", "")
+
+    logger.info("_run_sql_job: submitted query_id=%s initial_state=%s", query_id, state)
+
+    # Poll until FINISHED / FAILED / CANCELED
+    for _ in range(120):
+        if state in ("FINISHED", "FAILED", "CANCELED"):
+            break
+        time.sleep(1)
+        poll_resp = requests.post(
+            path,
+            headers=headers,
+            json={
+                "source":  "mcp-ingestion-server",
+                "catalog": catalog,
+                "schema":  schema,
+                "nextUri": next_uri,
+            },
+            timeout=15,
+        )
+        poll_resp.raise_for_status()
+        data     = poll_resp.json().get("data", {}) or {}
+        state    = (data.get("stats") or {}).get("state", "")
+        next_uri = data.get("nextUri", next_uri)
+    else:
+        return {"status": "timeout", "query_id": query_id}
+
+    if state == "FINISHED":
+        return {"status": "completed", "query_id": query_id, "rows": data.get("updateCount", 0)}
+    return {"status": "failed", "query_id": query_id, "state": state}
+
+
+def _events_to_insert_sql(events: list[dict], table: str) -> str:
+    """Build a single INSERT … VALUES statement for a list of event dicts."""
+
+    def _sql_str(v) -> str:
+        """Render a Python value as a Presto SQL literal."""
+        if v is None:
+            return "NULL"
+        if isinstance(v, (int, float)):
+            return str(v)
+        # Escape single quotes and wrap in quotes
+        escaped = str(v).replace("'", "''")
+        return f"'{escaped}'"
+
+    def _ts(v) -> str:
+        """Render an ISO timestamp string as a Presto TIMESTAMP literal."""
+        if v is None:
+            return "NULL"
+        # Strip timezone suffix — Presto TIMESTAMP is timezone-naive
+        ts = str(v).replace("+00:00", "").replace("Z", "").replace("T", " ")
+        return f"TIMESTAMP '{ts}'"
+
+    now_ts = _ts(time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()))
+
+    rows = []
+    for e in events:
+        row = ", ".join([
+            _sql_str(e.get("event_id")),
+            _sql_str(e.get("event_type")),
+            _ts(e.get("event_timestamp")),
+            _sql_str(e.get("schema_version")),
+            _sql_str(e.get("impression_id")),
+            _sql_str(e.get("conversion_id")),
+            _sql_str(e.get("publisher_id")),
+            _sql_str(e.get("advertiser_id")),
+            _sql_str(e.get("cookie_id")),
+            _sql_str(e.get("cookie_type")),
+            _sql_str(e.get("cohort")),
+            _ts(e.get("impression_timestamp")),
+            _ts(e.get("conversion_timestamp")),
+            _sql_str(e.get("time_to_conversion_seconds")),
+            now_ts,   # ingested_at
+        ])
+        rows.append(f"({row})")
+
+    values = ",\n  ".join(rows)
+    return f"INSERT INTO {table} VALUES\n  {values}"
+
+
+# ---------------------------------------------------------------------------
+# MCP tool — ingest_to_iceberg
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def ingest_to_iceberg(
+    batch_size: int = 100,
+    timeout_seconds: float = 10.0,
+    consumer_group_id: str = "mcp-iceberg-default",
+    target_table: str | None = None,
+    engine_id: str | None = None,
+) -> dict:
+    """Consume a batch of Affiliate Junction events from Kafka and write them
+    to a watsonx.data Iceberg table.
+
+    This tool combines subscribe_and_ingest with a Presto INSERT, landing
+    events directly into the Iceberg table in a single call.
+
+    Args:
+        batch_size: Maximum number of messages to consume (default 100).
+        timeout_seconds: Maximum wall-clock time to wait for messages (default 10s).
+        consumer_group_id: Kafka consumer group ID — use a unique value per
+            attendee to maintain independent offsets (default
+            "mcp-iceberg-default").
+        target_table: Fully-qualified Iceberg table name
+            (default "my_data.affiliate_junction.kafka_events").
+        engine_id: watsonx.data Presto engine to use (default "presto44").
+
+    Returns:
+        A dict with:
+          - rows_written: number of rows inserted
+          - kafka_count: number of events consumed from Kafka
+          - kafka_errors: parse errors encountered during consumption
+          - job_status: watsonx.data SQL job status
+          - target_table: the table written to
+    """
+    # Resolve defaults from env so attendees only need to configure .env
+    if target_table is None:
+        target_table = os.getenv(
+            "WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events"
+        )
+    if engine_id is None:
+        engine_id = os.getenv("WATSONX_DATA_ENGINE_ID", "presto44")
+
+    # Step 1 — consume from Kafka
+    kafka_result = subscribe_and_ingest(
+        batch_size=batch_size,
+        timeout_seconds=timeout_seconds,
+        consumer_group_id=consumer_group_id,
+    )
+    events = kafka_result["events"]
+
+    if not events:
+        logger.info("ingest_to_iceberg: no events consumed, skipping INSERT")
+        return {
+            "rows_written":  0,
+            "kafka_count":   0,
+            "kafka_errors":  kafka_result["errors"],
+            "job_status":    "skipped",
+            "target_table":  target_table,
+        }
+
+    # Step 2 — build INSERT SQL
+    sql = _events_to_insert_sql(events, target_table)
+    logger.info(
+        "ingest_to_iceberg: inserting %d rows into %s", len(events), target_table
+    )
+
+    # Step 3 — get IAM token and run the SQL job
+    token  = _get_iam_token()
+    job    = _run_sql_job(sql, engine_id, token)
+    status = job.get("status", "unknown")
+
+    logger.info("ingest_to_iceberg: job %s — status=%s", job.get("job_id"), status)
+
+    return {
+        "rows_written":  len(events) if status == "completed" else 0,
+        "kafka_count":   kafka_result["count"],
+        "kafka_errors":  kafka_result["errors"],
+        "job_status":    status,
+        "target_table":  target_table,
     }
 
 
