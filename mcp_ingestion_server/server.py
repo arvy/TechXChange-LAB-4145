@@ -166,8 +166,9 @@ def subscribe_and_ingest(
             else:
                 errors.append(f"partition={msg.partition()} offset={msg.offset()}")
 
-        # Commit offsets only after the full batch is collected
-        consumer.commit(asynchronous=False)
+        # Commit offsets only if we actually consumed something
+        if events:
+            consumer.commit(asynchronous=False)
 
         logger.info(
             "subscribe_and_ingest complete: %d events, %d errors",

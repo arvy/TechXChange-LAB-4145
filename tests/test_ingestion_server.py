@@ -121,6 +121,13 @@ class TestParseMessage:
         assert parsed is not None
         assert parsed["publisher_id"] is None
 
+    def test_missing_payload_key_does_not_raise(self):
+        """Envelope with no payload key should yield all-None payload fields."""
+        envelope = {"event_id": "evt-005", "event_type": "conversion"}
+        parsed = _parse_message(json.dumps(envelope))
+        assert parsed is not None
+        assert parsed["conversion_id"] is None
+
 
 # ---------------------------------------------------------------------------
 # Integration tests — subscribe_and_ingest (requires live Kafka)
