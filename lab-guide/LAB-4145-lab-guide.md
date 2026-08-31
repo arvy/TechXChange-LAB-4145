@@ -358,11 +358,19 @@ Open `mcp_ingestion_server/server.py` in your editor. Take a few minutes to read
 | Presto HTTP API (not JDBC) | No driver install needed; works from any Python environment |
 | Per-attendee consumer group | Each attendee's Bob instance reads independently from offset 0 |
 
-### 5.3 Connect Bob to the MCP server
+### 5.3 Connect Bob to the MCP servers
 
-IBM Bob needs to know about your MCP ingestion server before it can call it. You register it by adding a workspace MCP config file.
+This lab uses three MCP servers. You configure them in two places:
 
-Create (or check) the workspace MCP config:
+| MCP server | Config location | Why |
+|---|---|---|
+| `affiliate-junction-ingestion` | Workspace (`.bob/mcp.json`) | Points to your local virtualenv — path is project-specific |
+| `watsonxdata` | Global (`~/.bob/settings/mcp.json`) | Shared watsonx.data credentials, available in all projects |
+| `wxdi-mcp-server` | Global (`~/.bob/settings/mcp.json`) | Shared watsonx.data Intelligence credentials |
+
+#### Step 1 — Workspace config (ingestion server)
+
+The workspace config is already in the repository. Check it:
 
 ```bash
 cat .bob/mcp.json
@@ -383,17 +391,57 @@ It should contain:
 }
 ```
 
-> **Note:** Update `cwd` to match your actual home directory path if different.
+> **Note:** Update `cwd` to the absolute path of the repository on your machine. Run `pwd` in the terminal to get it.
 
-Reload Bob to pick up the new MCP server: open the command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
+#### Step 2 — Global config (watsonx.data + Intelligence servers)
 
-Verify Bob can see the tools by asking it:
+Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below. If the file already exists, merge the `mcpServers` block — do not overwrite the whole file.
+
+```json
+{
+  "mcpServers": {
+    "watsonxdata": {
+      "command": "uvx",
+      "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
+      "env": {
+        "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
+        "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from credential sheet>",
+        "WATSONX_DATA_INSTANCE_ID": "crn:v1:bluemix:public:lakehouse:ca-tor:a/13821c80b84a4240820821b6b40185c9:8afc678c-3e67-4589-ad0d-ee93c8346dc4::"
+      },
+      "disabled": false
+    },
+    "wxdi-mcp-server": {
+      "command": "uvx",
+      "args": ["ibm-watsonx-data-intelligence-mcp-server", "--transport", "stdio"],
+      "env": {
+        "DI_SERVICE_URL": "https://api.ca-tor.dataplatform.cloud.ibm.com",
+        "DI_APIKEY": "<your IBM Cloud API key from credential sheet>",
+        "DI_ENV_MODE": "SaaS",
+        "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
+      },
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. `uvx` runs each server in an isolated environment — no manual install needed. The first run will download the package automatically (requires internet access).
+
+#### Step 3 — Reload Bob
+
+Reload Bob to pick up all three servers: open the command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
+
+Verify Bob can see all the tools by asking it:
 
 ```
-What MCP tools do you have available from the affiliate-junction-ingestion server?
+What MCP servers and tools do you have available?
 ```
 
-Bob should list `subscribe_and_ingest` and `ingest_to_iceberg`.
+Bob should list tools from all three servers:
+- `affiliate-junction-ingestion` → `subscribe_and_ingest`, `ingest_to_iceberg`
+- `watsonxdata` → `execute_select`, `execute_insert`, `list_schemas`, `list_tables`, …
+- `wxdi-mcp-server` → `search_asset`, `create_metadata_import`, `execute_metadata_enrichment_asset`, …
 
 ### 5.4 Consume your first batch from Kafka
 
