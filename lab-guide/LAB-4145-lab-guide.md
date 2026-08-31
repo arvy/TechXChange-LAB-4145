@@ -73,7 +73,7 @@ The data industry is in the middle of a significant shift. For years, building a
 
 **Model Context Protocol (MCP)** changes this. MCP is an open standard that lets AI agents call external tools — databases, APIs, messaging systems — through a uniform interface. Instead of hand-crafting a bespoke integration for every connection, you expose capabilities as MCP tools and let an AI agent orchestrate them.
 
-In this lab, you will see what that looks like in practice. You will use **IBM Bob** (IBM's AI coding assistant) as your agent, and you will connect it to three MCP servers:
+In this lab, you will see what that looks like in practice. You will use **IBM Bob** (IBM's AI-powered coding assistant, available as a desktop application) as your agent, and you will connect it to three MCP servers:
 
 - An **ingestion server** you build yourself — reads from a live Confluent Kafka topic and writes directly to watsonx.data
 - The **watsonx.data MCP server** — lets you run SQL, inspect schemas, and manage tables
@@ -163,16 +163,16 @@ This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with wa
 | Confluent Platform | 3 brokers at `163.66.90.46:9094–9096` · SASL_SSL | Shared — all attendees read the same topic |
 | watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
-| IBM Bob | AI coding assistant with MCP tool access | Personal TechZone login |
-| Lab compute | TechZone-provisioned environment | Personal TechZone login |
+| IBM Bob | AI coding assistant desktop app · license provided | Personal — installed on your laptop |
+| Lab compute | Your laptop | Personal |
 
 ### 3.3 Lab environment connectivity
 
 ```
-Your browser
-    │  TechZone login
+Your laptop
+    │
     ▼
-IBM Bob (in-browser AI agent)
+IBM Bob (desktop application)
     │  MCP stdio transport
     ├──────────────────────────► MCP Ingestion Server (local process)
     │                                │  SASL_SSL  port 9094/9095/9096
@@ -195,40 +195,45 @@ All credentials are provided via your TechZone environment. You will configure t
 
 ### 4.1 Credentials and access
 
-When you reserved this lab through IBM TechZone, you received an email with your environment details. You will need:
+Your lab instructor will provide a credential sheet with:
 
 | Item | Where to find it |
 |---|---|
-| `ATTENDEE_ID` | Your TechZone username (e.g. `student01`) |
-| IBM Bob URL | Provided in your TechZone environment details |
-| IBM Cloud API key | Provided in your TechZone environment details |
-| Kafka SASL password | Provided in your TechZone environment details |
+| `ATTENDEE_ID` | e.g. `student01` — assigned at lab start |
+| IBM Bob licence key | Printed on your credential sheet |
+| IBM Cloud API key | Printed on your credential sheet |
+| Kafka SASL password | Printed on your credential sheet |
 
 All other values (broker address, instance CRN, etc.) are the same for all attendees and are pre-filled in the steps below.
 
-> **Tip:** Keep your TechZone environment page open in a separate browser tab — you may need to refer back to it during setup.
+### 4.2 Install IBM Bob and open the lab repository
 
-### 4.2 Open the lab repository in Bob
+IBM Bob is a desktop application. If you have not already installed it, download it now:
 
-Your TechZone environment includes IBM Bob with the lab repository pre-cloned. Open Bob using the URL from your environment details.
+1. Go to **[ibm.biz/ibm-bob-download](https://ibm.biz/ibm-bob-download)** and download the installer for your operating system.
+2. Run the installer and follow the prompts.
+3. When prompted, enter the licence key from your credential sheet.
 
-The repository is located at:
-
-```
-~/agentic-ai-data-pipeline-workshop
-```
-
-Open Bob's integrated terminal (`Ctrl+`` ` ``) and verify you are in the right directory:
+Once Bob is open, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
 
 ```bash
-cd ~/agentic-ai-data-pipeline-workshop
-ls
-# You should see: mcp_ingestion_server/  producer/  schema/  tests/  README.md  ...
+git clone https://github.ibm.com/arvydas-jonusonis/agentic-ai-data-pipeline-workshop.git
+cd agentic-ai-data-pipeline-workshop
 ```
+
+> **Already have Bob installed?** Skip the download — just open a new terminal and clone the repository.
 
 ### 4.3 Install dependencies
 
-The project uses `uv` for Python environment management. It is pre-installed in your TechZone environment.
+The project uses `uv` for Python environment management. Install it if it is not already on your machine:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
 ```bash
 # Install all Python dependencies into a local virtualenv
@@ -256,7 +261,7 @@ The MCP ingestion server reads its credentials from `mcp_ingestion_server/.env`.
 cp mcp_ingestion_server/env-sample mcp_ingestion_server/.env
 ```
 
-Open `mcp_ingestion_server/.env` in Bob's editor and fill in the two values from your TechZone environment:
+Open `mcp_ingestion_server/.env` in Bob's editor and fill in the two values from your credential sheet:
 
 ```
 KAFKA_BOOTSTRAP_SERVERS=163.66.90.46:9094,163.66.90.46:9095,163.66.90.46:9096
@@ -355,7 +360,7 @@ Open `mcp_ingestion_server/server.py` in your editor. Take a few minutes to read
 
 ### 5.3 Connect Bob to the MCP server
 
-IBM Bob is already installed in your TechZone environment. You need to register the MCP ingestion server so Bob can call it.
+IBM Bob needs to know about your MCP ingestion server before it can call it. You register it by adding a workspace MCP config file.
 
 Create (or check) the workspace MCP config:
 
@@ -380,7 +385,7 @@ It should contain:
 
 > **Note:** Update `cwd` to match your actual home directory path if different.
 
-Open Bob in the browser (`http://localhost:3000` or as directed by your instructor), then run **Developer: Reload Window** from the command palette (`Ctrl+Shift+P`) to load the new MCP server.
+Reload Bob to pick up the new MCP server: open the command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
 
 Verify Bob can see the tools by asking it:
 
@@ -675,7 +680,7 @@ If you did not complete all exercises during the session, you can continue in th
 
 Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The Kafka topic will continue receiving events from the shared producer.
 
-To resume, simply re-open Bob using your TechZone environment URL — your `.env` files and virtualenv are still in place.
+To resume, simply re-open Bob on your laptop, navigate to the `agentic-ai-data-pipeline-workshop` folder, and continue — your `.env` files and virtualenv are still in place.
 
 ---
 
