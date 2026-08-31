@@ -414,7 +414,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "command": "uvx",
       "args": ["ibm-watsonx-data-intelligence-mcp-server", "--transport", "stdio"],
       "env": {
-        "DI_SERVICE_URL": "https://api.ca-tor.dataplatform.cloud.ibm.com",
+        "DI_SERVICE_URL": "https://api.dataplatform.cloud.ibm.com",
         "DI_APIKEY": "<your IBM Cloud API key from credential sheet>",
         "DI_ENV_MODE": "SaaS",
         "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
