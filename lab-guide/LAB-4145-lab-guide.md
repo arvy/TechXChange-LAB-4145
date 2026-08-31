@@ -210,7 +210,7 @@ All other values (broker address, instance CRN, etc.) are the same for all atten
 
 IBM Bob is a desktop application. If you have not already installed it, download it now:
 
-1. Go to **[ibm.biz/ibm-bob-download](https://ibm.biz/ibm-bob-download)** and download the installer for your operating system.
+1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
 2. Run the installer and follow the prompts.
 3. When prompted, enter the licence key from your credential sheet.
 
