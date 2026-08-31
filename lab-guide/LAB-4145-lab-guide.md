@@ -445,11 +445,10 @@ Bob should list tools from all three servers:
 
 ### 5.4 Consume your first batch from Kafka
 
-Ask Bob:
+Ask Bob in plain English:
 
 ```
-Call subscribe_and_ingest with batch_size=10, timeout_seconds=15,
-and consumer_group_id="student01-explore"
+Show me a sample of the live affiliate junction events coming off Kafka.
 ```
 
 Bob will call the tool and return a result like:
@@ -483,14 +482,13 @@ Take a moment to explore the events Bob returned. Notice:
 
 ### 5.5 Land events into your Iceberg table
 
-Now ask Bob to do the full pipeline in one call:
+Now ask Bob to do the full pipeline. Start with a clear, natural request:
 
 ```
-Call ingest_to_iceberg with batch_size=50, timeout_seconds=20,
-and consumer_group_id="student01-ingest"
+Ingest a batch of 50 affiliate junction events from Kafka into my Iceberg table.
 ```
 
-Bob will call the tool. While it runs (usually 20–40 seconds), you will see:
+Bob will figure out which tool to call and with what parameters. While it runs (usually 20–40 seconds), you will see:
 
 1. A Kafka consumer opens and polls 50 events
 2. An `INSERT INTO … VALUES` statement is generated with 50 rows
@@ -510,7 +508,13 @@ The response should be:
 }
 ```
 
-> **Ingest a larger batch:** Once you've confirmed this works, try `batch_size=200` to load more data for the analysis exercises.
+Once that works, try an even more natural prompt that lets Bob choose sensible defaults entirely on its own:
+
+```
+Grab some live events from the Kafka topic and write them to watsonx.data.
+```
+
+> **Ingest more data:** Ask Bob to *"keep pulling events from Kafka and writing them to my table"* — Bob will loop the calls autonomously until you stop it or the topic is exhausted. Load at least 200 rows before moving to Exercise 2.
 
 ### 5.6 Verify the data in watsonx.data
 
@@ -552,7 +556,7 @@ In this exercise you will use **watsonx.data Intelligence** — connected to Bob
 Bob already has access to the watsonx.data Intelligence MCP server (`wxdi-mcp-server`). Ask Bob to find your asset:
 
 ```
-Search for the asset "kafka_events" in the affiliate_junction_student01 project or catalog
+Find my kafka_events table in watsonx.data Intelligence.
 ```
 
 Bob will call the Intelligence MCP server's search tool and return the asset details.
@@ -560,8 +564,7 @@ Bob will call the Intelligence MCP server's search tool and return the asset det
 If it is not yet catalogued, ask Bob to import it:
 
 ```
-Create a metadata import for the kafka_events table in watsonx.data.
-Use the presto44 connection and scope my_data.affiliate_junction_student01
+Import my kafka_events table from watsonx.data into the Intelligence catalogue.
 ```
 
 Bob will:
@@ -574,9 +577,7 @@ Bob will:
 Once the asset is imported, ask Bob to enrich it:
 
 ```
-Run metadata enrichment on the kafka_events table.
-Profile the data and assign business terms.
-Use the [your instructor's category] category.
+Analyse my kafka_events table — profile the data and suggest business terms for the columns.
 ```
 
 Bob will:
@@ -588,7 +589,7 @@ Bob will:
 Wait for the job to complete (typically 2–3 minutes). Ask Bob:
 
 ```
-What is the status of the metadata enrichment job?
+How is the enrichment job going?
 ```
 
 ### 6.3 Inspect generated metadata via MCP
@@ -628,41 +629,36 @@ In this exercise you will use Bob's natural language interface — backed by the
 
 Bob has direct access to the `execute_select` tool on the watsonx.data MCP server. You can ask questions in plain English.
 
-Start with exploratory questions:
+Start with exploratory questions — no SQL required:
 
 ```
-How many events of each type are in my kafka_events table?
-Use my_data.affiliate_junction_student01 schema.
-```
-
-```
-What are the top 5 publishers by impression volume?
+How many events of each type have I collected so far?
 ```
 
 ```
-What percentage of events have a fraud cookie?
+Which publishers are generating the most impressions?
+```
+
+```
+What fraction of my events involve a fraud cookie?
 ```
 
 Bob will translate each question into Presto SQL, execute it via the MCP server, and show you the results.
 
 ### 7.2 Run analytical queries via the watsonx.data MCP server
 
-Try more analytical questions:
+Try deeper questions:
 
 ```
-What is the average time to conversion in seconds for each publisher cohort?
-Only look at conversion_identified events.
-```
-
-```
-Show me the conversion rate by cookie type — that is, for each cookie_type,
-what fraction of cookies that appear in impressions also appear in
-conversion_identified events?
+On average, how long does it take for each publisher cohort to convert after seeing an ad?
 ```
 
 ```
-Which advertisers have the highest number of attributed conversions?
-Show the top 10.
+Which cookie types are most likely to lead to a conversion?
+```
+
+```
+Who are my top 10 advertisers by attributed conversions?
 ```
 
 Bob will generate and execute SQL similar to:
@@ -709,11 +705,10 @@ despite having many impressions? These might indicate attribution problems.
 
 **Stretch goal — ingest more and re-query:**
 
-If you finish early, ask Bob to ingest several more batches:
+If you finish early, ask Bob to load more data:
 
 ```
-Call ingest_to_iceberg 5 times with batch_size=100,
-using a unique consumer_group_id each time (e.g. student01-batch-1 through student01-batch-5)
+Pull in 500 more affiliate junction events from Kafka.
 ```
 
 Then re-run your analytical queries to see how the results change with more data volume.
