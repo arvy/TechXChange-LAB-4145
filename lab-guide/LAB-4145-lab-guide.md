@@ -8,7 +8,7 @@
 |---|---|
 | **Author** | Arvydas Jonusonis |
 | **Email** | arvydas.jonusonis@ibm.com |
-| **Role** | Technical Sales Engineer, Data & AI |
+| **Role** | Solutions Architect, Data Labs |
 | **Lab number** | LAB-4145 |
 | **Duration** | 90 minutes |
 | **TechXchange 2026** | |
@@ -124,7 +124,7 @@ The lab is built around a five-stage pipeline:
                         │ Kafka consumer
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              MCP Ingestion Server  (your VSI)               │
+│         MCP Ingestion Server  (TechZone environment)        │
 │  Tool: subscribe_and_ingest  — read batch from Kafka        │
 │  Tool: ingest_to_iceberg     — write batch to Iceberg       │
 └───────────────────────┬─────────────────────────────────────┘
@@ -156,28 +156,36 @@ The lab is built around a five-stage pipeline:
 
 ### 3.2 Infrastructure components
 
+This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with watsonx.data portfolio"** environment. All infrastructure is pre-provisioned; each participant receives their own TechZone login.
+
 | Resource | Details | Shared / Personal |
 |---|---|---|
-| Confluent Platform | 3 brokers at `163.66.81.251:9094–9096` · SASL_SSL | Shared — all attendees read the same topic |
-| watsonx.data SaaS | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
+| Confluent Platform | 3 brokers at `163.66.90.46:9094–9096` · SASL_SSL | Shared — all attendees read the same topic |
+| watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
-| IBM Bob | AI agent with MCP tool access | Personal |
-| Attendee VSI | `bx2-4x16` · Ubuntu 22.04 | Personal |
+| IBM Bob | AI coding assistant with MCP tool access | Personal TechZone login |
+| Lab compute | TechZone-provisioned environment | Personal TechZone login |
 
 ### 3.3 Lab environment connectivity
 
 ```
-Your laptop
-    │  SSH
+Your browser
+    │  TechZone login
     ▼
-Attendee VSI  (your-attendee-id.lab.techxchange.ibm.com)
-    │  SASL_SSL  port 9094/9095/9096
-    ├──────────────────────────► Confluent Platform VM
-    │  HTTPS  /lakehouse/api
-    └──────────────────────────► watsonx.data SaaS (ca-tor)
+IBM Bob (in-browser AI agent)
+    │  MCP stdio transport
+    ├──────────────────────────► MCP Ingestion Server (local process)
+    │                                │  SASL_SSL  port 9094/9095/9096
+    │                                └──────────► Confluent Platform (163.66.90.46)
+    │  MCP stdio transport
+    ├──────────────────────────► watsonx.data MCP server
+    │                                │  HTTPS  /lakehouse/api
+    │                                └──────────► watsonx.data SaaS (ca-tor)
+    │  MCP stdio transport
+    └──────────────────────────► watsonx.data Intelligence MCP server
 ```
 
-All credentials are pre-populated in your VSI. You will configure them into `.env` files in step 4.4.
+All credentials are provided via your TechZone environment. You will configure them into `.env` files in step 4.4.
 
 ---
 
@@ -187,46 +195,53 @@ All credentials are pre-populated in your VSI. You will configure them into `.en
 
 ### 4.1 Credentials and access
 
-Your lab instructor will provide a printed credential sheet with:
+When you reserved this lab through IBM TechZone, you received an email with your environment details. You will need:
 
 | Item | Where to find it |
 |---|---|
-| `ATTENDEE_ID` | e.g. `student01` |
-| VSI SSH address | e.g. `student01.lab.techxchange.ibm.com` |
-| IBM Cloud API key | For watsonx.data |
-| Kafka broker addresses | `163.66.81.251:9094,9095,9096` |
-| Kafka username / password | SASL credentials |
+| `ATTENDEE_ID` | Your TechZone username (e.g. `student01`) |
+| IBM Bob URL | Provided in your TechZone environment details |
+| IBM Cloud API key | Provided in your TechZone environment details |
+| Kafka SASL password | Provided in your TechZone environment details |
 
-Keep this sheet available throughout the lab.
+All other values (broker address, instance CRN, etc.) are the same for all attendees and are pre-filled in the steps below.
 
-### 4.2 Clone the lab repository
+> **Tip:** Keep your TechZone environment page open in a separate browser tab — you may need to refer back to it during setup.
 
-SSH into your VSI and clone the repository:
+### 4.2 Open the lab repository in Bob
 
-```bash
-ssh studentNN@studentNN.lab.techxchange.ibm.com
+Your TechZone environment includes IBM Bob with the lab repository pre-cloned. Open Bob using the URL from your environment details.
+
+The repository is located at:
+
+```
+~/agentic-ai-data-pipeline-workshop
 ```
 
-```bash
-git clone https://github.ibm.com/arvydas-jonusonis/agentic-ai-data-pipeline-workshop.git
-cd agentic-ai-data-pipeline-workshop
-```
+Open Bob's integrated terminal (`Ctrl+`` ` ``) and verify you are in the right directory:
 
-> **Note:** The CA certificate for the Confluent cluster is pre-installed on your VSI at `~/kafka-ca.crt`. The setup script below copies it into place.
+```bash
+cd ~/agentic-ai-data-pipeline-workshop
+ls
+# You should see: mcp_ingestion_server/  producer/  schema/  tests/  README.md  ...
+```
 
 ### 4.3 Install dependencies
 
-The project uses `uv` for Python environment management. It is pre-installed on your VSI.
+The project uses `uv` for Python environment management. It is pre-installed in your TechZone environment.
 
 ```bash
 # Install all Python dependencies into a local virtualenv
 uv sync
+```
 
-# Copy the CA cert into the project root (required for Kafka TLS)
+Copy the Confluent Platform CA certificate into the project root (pre-downloaded in your environment):
+
+```bash
 cp ~/kafka-ca.crt ./kafka-ca.crt
 ```
 
-Verify the install:
+Verify:
 
 ```bash
 uv run python --version
@@ -235,40 +250,33 @@ uv run python --version
 
 ### 4.4 Configure your environment files
 
-The project uses two `.env` files — one for the Kafka producer, one for the MCP ingestion server. Templates are provided.
-
-**MCP ingestion server:**
+The MCP ingestion server reads its credentials from `mcp_ingestion_server/.env`. A template is provided.
 
 ```bash
 cp mcp_ingestion_server/env-sample mcp_ingestion_server/.env
 ```
 
-Open `mcp_ingestion_server/.env` in your editor and fill in the values from your credential sheet:
+Open `mcp_ingestion_server/.env` in Bob's editor and fill in the two values from your TechZone environment:
 
 ```
-KAFKA_BOOTSTRAP_SERVERS=163.66.81.251:9094,163.66.81.251:9095,163.66.81.251:9096
+KAFKA_BOOTSTRAP_SERVERS=163.66.90.46:9094,163.66.90.46:9095,163.66.90.46:9096
 KAFKA_TOPIC=affiliate-junction-events
 KAFKA_SECURITY_PROTOCOL=SASL_SSL
 KAFKA_SASL_MECHANISM=PLAIN
 KAFKA_SASL_USERNAME=kafka-admin
-KAFKA_SASL_PASSWORD=<password from credential sheet>
+KAFKA_SASL_PASSWORD=<your Kafka SASL password from TechZone>
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
-WATSONX_DATA_API_KEY=<IBM Cloud API key from credential sheet>
+WATSONX_DATA_API_KEY=<your IBM Cloud API key from TechZone>
 WATSONX_DATA_INSTANCE_ID=crn:v1:bluemix:public:lakehouse:ca-tor:a/13821c80b84a4240820821b6b40185c9:8afc678c-3e67-4589-ad0d-ee93c8346dc4::
 WATSONX_DATA_ENGINE_ID=presto44
 WATSONX_DATA_TARGET_TABLE=my_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
-> **Important:** Replace `<your-attendee-id>` with your assigned ID (e.g. `student01`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your table so attendees do not overwrite each other.
+> **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student01`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
 
-**Producer (optional — the producer is already running centrally):**
-
-```bash
-cp producer/env-sample producer/.env
-# Fill in the same Kafka values as above
-```
+> **Note:** The producer is already running centrally — you do not need to configure or start it.
 
 ---
 
@@ -347,7 +355,7 @@ Open `mcp_ingestion_server/server.py` in your editor. Take a few minutes to read
 
 ### 5.3 Connect Bob to the MCP server
 
-IBM Bob is already installed on your VSI. You need to register the MCP ingestion server so Bob can call it.
+IBM Bob is already installed in your TechZone environment. You need to register the MCP ingestion server so Bob can call it.
 
 Create (or check) the workspace MCP config:
 
@@ -363,7 +371,7 @@ It should contain:
     "affiliate-junction-ingestion": {
       "command": ".venv/bin/python",
       "args": ["-m", "mcp_ingestion_server.server"],
-      "cwd": "/home/studentNN/agentic-ai-data-pipeline-workshop",
+      "cwd": "/home/<your-attendee-id>/agentic-ai-data-pipeline-workshop",
       "alwaysAllow": ["subscribe_and_ingest"]
     }
   }
@@ -665,15 +673,9 @@ Then re-run your analytical queries to see how the results change with more data
 
 If you did not complete all exercises during the session, you can continue in the **self-paced lab room** (check the TechXchange schedule for times and location).
 
-Your VSI and watsonx.data schema will remain active for 48 hours after the session. The Kafka topic will continue receiving events from the shared producer.
+Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The Kafka topic will continue receiving events from the shared producer.
 
-To resume from where you left off:
-
-```bash
-ssh studentNN@studentNN.lab.techxchange.ibm.com
-cd agentic-ai-data-pipeline-workshop
-# Your .env files are still in place — no re-configuration needed
-```
+To resume, simply re-open Bob using your TechZone environment URL — your `.env` files and virtualenv are still in place.
 
 ---
 
@@ -701,7 +703,7 @@ Raise your hand at any time. Instructors are circulating throughout the lab room
 Cause: The MCP server was not loaded at Bob startup.
 
 Solution:
-1. Verify `.bob/mcp.json` exists and the `cwd` path is correct for your VSI.
+1. Verify `.bob/mcp.json` exists and the `cwd` path matches your home directory in the TechZone environment.
 2. Open the Bob command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
 3. Ask Bob again: `What MCP tools do you have?`
 
