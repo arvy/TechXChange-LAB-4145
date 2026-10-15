@@ -401,14 +401,14 @@ It should contain:
     "affiliate-junction-ingestion": {
       "command": ".venv/bin/python",
       "args": ["-m", "mcp_ingestion_server.server"],
-      "cwd": "/home/<your-attendee-id>/agentic-ai-data-pipeline-workshop",
+      "cwd": "${workspaceFolder}",
       "alwaysAllow": ["subscribe_and_ingest"]
     }
   }
 }
 ```
 
-> **Note:** Update `cwd` to the absolute path of the repository on your machine. Run `pwd` in the terminal to get it.
+> **Note:** `${workspaceFolder}` is resolved automatically by Bob to the root of the open workspace — no manual path editing needed.
 
 #### Step 2 — Global config (watsonx.data + Intelligence servers)
 

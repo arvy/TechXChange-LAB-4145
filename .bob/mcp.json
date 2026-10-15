@@ -3,7 +3,7 @@
     "affiliate-junction-ingestion": {
       "command": ".venv/bin/python",
       "args": ["-m", "mcp_ingestion_server.server"],
-      "cwd": "/Users/arvydasj/techxchange/agentic-ai-data-pipeline-workshop",
+      "cwd": "${workspaceFolder}",
       "alwaysAllow": ["subscribe_and_ingest"]
     }
   }
