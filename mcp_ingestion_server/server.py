@@ -156,7 +156,12 @@ def subscribe_and_ingest(
             partitions.append(TopicPartition(topic, tp.partition, tp.offset if tp.offset >= 0 else 0))
         consumer.assign(partitions)
 
-        # Poll until we have a full batch or time runs out
+        # Distribute the batch evenly across partitions so that no single
+        # partition dominates (which would happen if one partition is much
+        # larger than the others, e.g. impressions >> conversions).
+        per_partition = max(1, batch_size // num_partitions)
+        counts: dict[int, int] = {p: 0 for p in range(num_partitions)}
+
         deadline = time.monotonic() + timeout_seconds
 
         while len(events) < batch_size and time.monotonic() < deadline:
@@ -164,19 +169,28 @@ def subscribe_and_ingest(
             msg = consumer.poll(timeout=min(1.0, remaining))
 
             if msg is None:
-                # No message within the 1s poll window — keep waiting
                 continue
 
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
-                    # Reached end of a partition — not an error
                     logger.debug("Partition EOF: %s [%d]", msg.topic(), msg.partition())
                     continue
                 raise KafkaException(msg.error())
 
+            p = msg.partition()
+
+            # Skip messages from a partition that has already hit its quota,
+            # unless all other partitions are also at quota (i.e. we are
+            # filling remaining slots from wherever messages are available).
+            at_quota = counts.get(p, 0) >= per_partition
+            all_at_quota = all(v >= per_partition for v in counts.values())
+            if at_quota and not all_at_quota:
+                continue
+
             parsed = _parse_message(msg.value().decode("utf-8"))
             if parsed:
                 events.append(parsed)
+                counts[p] = counts.get(p, 0) + 1
             else:
                 errors.append(f"partition={msg.partition()} offset={msg.offset()}")
 
