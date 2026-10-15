@@ -326,10 +326,7 @@ def run():
         conversion_count = 0
         attributed_count = 0
 
-        # --- Build all events for the cycle then shuffle before publishing ---
-        events = []
-
-        # Impressions
+        # --- Impressions ---
         for _ in range(TRAFFIC_PER_CYCLE):
             pub_id  = random.choice(publishers)
             adv_id  = random.choice(advertisers)
@@ -338,33 +335,28 @@ def run():
             )
             cohort = derive_cohort(cookie_id, publishers_data, pub_id)
             tracker.record(cookie_id, pub_id, now)
-            events.append(make_impression(pub_id, adv_id, cookie_id, cookie_type, cohort))
+            publish(producer, make_impression(pub_id, adv_id, cookie_id, cookie_type, cohort))
             impression_count += 1
 
-        # Conversions (with attribution)
+        # --- Conversions (with attribution) ---
         for _ in range(SALES_PER_CYCLE):
             adv_id  = random.choice(advertisers)
             pub_id  = random.choice(publishers)
             cookie_id, cookie_type = get_cookie_for_publisher(
                 pub_id, publishers_data, fraud_cookies, cohort_cookies, random_cookies, all_cookies
             )
-            events.append(make_conversion(adv_id, pub_id, cookie_id, cookie_type))
+            publish(producer, make_conversion(adv_id, pub_id, cookie_id, cookie_type))
             conversion_count += 1
 
             impression = tracker.get_impression(cookie_id, now)
             if impression:
                 impression_ts, orig_pub_id = impression
                 cohort = derive_cohort(cookie_id, publishers_data, orig_pub_id)
-                events.append(make_conversion_identified(
+                publish(producer, make_conversion_identified(
                     adv_id, orig_pub_id, cookie_id, cookie_type, cohort,
                     impression_ts, now,
                 ))
                 attributed_count += 1
-
-        # Shuffle so all three event types are interleaved across partitions
-        random.shuffle(events)
-        for event in events:
-            publish(producer, event)
 
         # Flush all pending messages
         producer.flush()
