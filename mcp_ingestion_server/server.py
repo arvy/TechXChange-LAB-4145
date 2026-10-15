@@ -18,7 +18,7 @@ import os
 import time
 
 import requests
-from confluent_kafka import Consumer, KafkaError, KafkaException
+from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
@@ -47,11 +47,9 @@ def _build_consumer_config(group_id: str) -> dict:
     cfg = {
         "bootstrap.servers":  os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         "group.id":           group_id,
-        # Start from the earliest unread offset for this group.
-        # On first run (new group) this means the beginning of the topic.
+        # Used only for offset storage; actual partition assignment is manual
+        # via consumer.assign() so all partitions are polled on every call.
         "auto.offset.reset":  "earliest",
-        # Disable automatic offset commits — we commit only after
-        # successfully processing the full batch.
         "enable.auto.commit": False,
     }
     protocol = os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
@@ -130,8 +128,9 @@ def subscribe_and_ingest(
           - consumer_group_id: the group ID used
           - errors: list of any per-message parse errors encountered
     """
-    topic    = os.getenv("KAFKA_TOPIC", "affiliate-junction-events")
-    cfg      = _build_consumer_config(consumer_group_id)
+    topic        = os.getenv("KAFKA_TOPIC", "affiliate-junction-events")
+    num_partitions = int(os.getenv("KAFKA_TOPIC_PARTITIONS", "3"))
+    cfg          = _build_consumer_config(consumer_group_id)
 
     logger.info(
         "subscribe_and_ingest: topic=%s group=%s batch=%d timeout=%.1fs",
@@ -143,7 +142,19 @@ def subscribe_and_ingest(
     errors: list[str]  = []
 
     try:
-        consumer.subscribe([topic])
+        # Explicitly assign all partitions so every poll sees all event types.
+        # consumer.subscribe() hands assignment to the group coordinator which
+        # serialises partition consumption — one partition drained before the
+        # next is assigned — causing students to see only one event type at a
+        # time.  Manual assign() bypasses this entirely.
+        committed = consumer.committed(
+            [TopicPartition(topic, p) for p in range(num_partitions)]
+        )
+        partitions = []
+        for tp in committed:
+            # Use the committed offset if one exists, otherwise start from 0.
+            partitions.append(TopicPartition(topic, tp.partition, tp.offset if tp.offset >= 0 else 0))
+        consumer.assign(partitions)
 
         # Poll until we have a full batch or time runs out
         deadline = time.monotonic() + timeout_seconds
