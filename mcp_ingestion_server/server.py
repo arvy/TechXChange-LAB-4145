@@ -142,55 +142,68 @@ def subscribe_and_ingest(
     errors: list[str]  = []
 
     try:
-        # Explicitly assign all partitions so every poll sees all event types.
-        # consumer.subscribe() hands assignment to the group coordinator which
-        # serialises partition consumption — one partition drained before the
-        # next is assigned — causing students to see only one event type at a
-        # time.  Manual assign() bypasses this entirely.
+        # Assign all partitions explicitly at their committed offsets so that
+        # the group coordinator cannot serialise assignment (which would cause
+        # one partition to be drained before the next is assigned).
         committed = consumer.committed(
             [TopicPartition(topic, p) for p in range(num_partitions)]
         )
-        partitions = []
-        for tp in committed:
-            # Use the committed offset if one exists, otherwise start from 0.
-            partitions.append(TopicPartition(topic, tp.partition, tp.offset if tp.offset >= 0 else 0))
+        partitions = [
+            TopicPartition(topic, tp.partition, max(tp.offset, 0))
+            for tp in committed
+        ]
         consumer.assign(partitions)
 
-        # Distribute the batch evenly across partitions so that no single
-        # partition dominates (which would happen if one partition is much
-        # larger than the others, e.g. impressions >> conversions).
+        # Seek each partition to its starting offset so the internal fetch
+        # buffers are primed from the correct position on all partitions
+        # before we start consuming.
+        for tp in partitions:
+            consumer.seek(tp)
+
+        # Round-robin across partitions: collect up to per_partition messages
+        # from each partition in turn until the batch is full or time runs out.
+        # This guarantees a proportional mix of event types regardless of how
+        # many messages each partition holds.
         per_partition = max(1, batch_size // num_partitions)
-        counts: dict[int, int] = {p: 0 for p in range(num_partitions)}
+        deadline      = time.monotonic() + timeout_seconds
 
-        deadline = time.monotonic() + timeout_seconds
+        for tp in partitions:
+            if len(events) >= batch_size or time.monotonic() >= deadline:
+                break
+            collected = 0
+            while collected < per_partition and time.monotonic() < deadline:
+                remaining = max(0.0, deadline - time.monotonic())
+                msg = consumer.poll(timeout=min(1.0, remaining))
+                if msg is None:
+                    break  # no more messages on this partition right now
+                if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        logger.debug("Partition EOF: %s [%d]", msg.topic(), msg.partition())
+                        break
+                    raise KafkaException(msg.error())
+                if msg.partition() != tp.partition:
+                    continue  # stale pre-fetch from wrong partition; discard
+                parsed = _parse_message(msg.value().decode("utf-8"))
+                if parsed:
+                    events.append(parsed)
+                    collected += 1
+                else:
+                    errors.append(f"partition={msg.partition()} offset={msg.offset()}")
 
+        # Fill any remaining slots (e.g. a partition had fewer than per_partition
+        # messages) from wherever messages are still available.
         while len(events) < batch_size and time.monotonic() < deadline:
             remaining = max(0.0, deadline - time.monotonic())
             msg = consumer.poll(timeout=min(1.0, remaining))
-
             if msg is None:
-                continue
-
+                break
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
-                    logger.debug("Partition EOF: %s [%d]", msg.topic(), msg.partition())
                     continue
                 raise KafkaException(msg.error())
-
-            p = msg.partition()
-
-            # Skip messages from a partition that has already hit its quota,
-            # unless all other partitions are also at quota (i.e. we are
-            # filling remaining slots from wherever messages are available).
-            at_quota = counts.get(p, 0) >= per_partition
-            all_at_quota = all(v >= per_partition for v in counts.values())
-            if at_quota and not all_at_quota:
-                continue
-
             parsed = _parse_message(msg.value().decode("utf-8"))
             if parsed:
                 events.append(parsed)
-                counts[p] = counts.get(p, 0) + 1
             else:
                 errors.append(f"partition={msg.partition()} offset={msg.offset()}")
 
