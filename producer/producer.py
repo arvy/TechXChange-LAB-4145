@@ -273,10 +273,16 @@ def delivery_report(err, msg):
 
 
 def publish(producer, event):
-    """Serialise event to JSON and publish; use event_type as the Kafka message key."""
+    """Serialise event to JSON and publish; use cookie_id as the Kafka message key.
+
+    cookie_id has high cardinality (~5 000 values) so events are distributed
+    evenly across partitions.  All events for a given cookie (impression →
+    conversion → conversion_identified) also land on the same partition,
+    preserving per-cookie ordering for downstream attribution consumers.
+    """
     producer.produce(
         topic=KAFKA_TOPIC,
-        key=event["event_type"],
+        key=event["payload"]["cookie_id"],
         value=json.dumps(event),
         callback=delivery_report,
     )
