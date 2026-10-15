@@ -137,87 +137,75 @@ def subscribe_and_ingest(
         topic, consumer_group_id, batch_size, timeout_seconds,
     )
 
-    consumer = Consumer(cfg)
+    # Use one consumer per partition so each consumer's internal fetch buffer
+    # is scoped to a single partition.  This is the only reliable way to get
+    # an even mix of event types without fighting confluent-kafka's pre-fetch.
+    per_partition = max(1, batch_size // num_partitions)
+    deadline      = time.monotonic() + timeout_seconds
     events: list[dict] = []
     errors: list[str]  = []
 
+    # First: read committed offsets using a single temporary consumer
+    offset_consumer = Consumer(cfg)
     try:
-        # Assign all partitions explicitly at their committed offsets so that
-        # the group coordinator cannot serialise assignment (which would cause
-        # one partition to be drained before the next is assigned).
-        committed = consumer.committed(
+        committed = offset_consumer.committed(
             [TopicPartition(topic, p) for p in range(num_partitions)]
         )
-        partitions = [
-            TopicPartition(topic, tp.partition, max(tp.offset, 0))
-            for tp in committed
-        ]
-        consumer.assign(partitions)
+    finally:
+        offset_consumer.close()
 
-        # Seek each partition to its starting offset so the internal fetch
-        # buffers are primed from the correct position on all partitions
-        # before we start consuming.
-        for tp in partitions:
-            consumer.seek(tp)
+    partition_offsets = {
+        tp.partition: max(tp.offset, 0) for tp in committed
+    }
 
-        # Round-robin across partitions: collect up to per_partition messages
-        # from each partition in turn until the batch is full or time runs out.
-        # This guarantees a proportional mix of event types regardless of how
-        # many messages each partition holds.
-        per_partition = max(1, batch_size // num_partitions)
-        deadline      = time.monotonic() + timeout_seconds
+    # Then: one consumer per partition, each collecting its quota
+    for p in range(num_partitions):
+        if len(events) >= batch_size or time.monotonic() >= deadline:
+            break
 
-        for tp in partitions:
-            if len(events) >= batch_size or time.monotonic() >= deadline:
-                break
+        start_offset = partition_offsets[p]
+        tp = TopicPartition(topic, p, start_offset)
+
+        consumer = Consumer(cfg)
+        try:
+            consumer.assign([tp])
             collected = 0
             while collected < per_partition and time.monotonic() < deadline:
                 remaining = max(0.0, deadline - time.monotonic())
                 msg = consumer.poll(timeout=min(1.0, remaining))
                 if msg is None:
-                    break  # no more messages on this partition right now
+                    break
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
-                        logger.debug("Partition EOF: %s [%d]", msg.topic(), msg.partition())
                         break
                     raise KafkaException(msg.error())
-                if msg.partition() != tp.partition:
-                    continue  # stale pre-fetch from wrong partition; discard
                 parsed = _parse_message(msg.value().decode("utf-8"))
                 if parsed:
                     events.append(parsed)
                     collected += 1
+                    partition_offsets[p] = msg.offset() + 1
                 else:
-                    errors.append(f"partition={msg.partition()} offset={msg.offset()}")
+                    errors.append(f"partition={p} offset={msg.offset()}")
+        finally:
+            consumer.close()
 
-        # Fill any remaining slots (e.g. a partition had fewer than per_partition
-        # messages) from wherever messages are still available.
-        while len(events) < batch_size and time.monotonic() < deadline:
-            remaining = max(0.0, deadline - time.monotonic())
-            msg = consumer.poll(timeout=min(1.0, remaining))
-            if msg is None:
-                break
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                raise KafkaException(msg.error())
-            parsed = _parse_message(msg.value().decode("utf-8"))
-            if parsed:
-                events.append(parsed)
-            else:
-                errors.append(f"partition={msg.partition()} offset={msg.offset()}")
+    # Commit final offsets via a fresh consumer
+    if events:
+        commit_tps = [
+            TopicPartition(topic, p, off)
+            for p, off in partition_offsets.items()
+        ]
+        commit_consumer = Consumer(cfg)
+        try:
+            commit_consumer.assign(commit_tps)
+            commit_consumer.commit(offsets=commit_tps, asynchronous=False)
+        finally:
+            commit_consumer.close()
 
-        # Commit offsets only if we actually consumed something
-        if events:
-            consumer.commit(asynchronous=False)
-
-        logger.info(
-            "subscribe_and_ingest complete: %d events, %d errors",
-            len(events), len(errors),
-        )
-
-    finally:
-        consumer.close()
+    logger.info(
+        "subscribe_and_ingest complete: %d events, %d errors",
+        len(events), len(errors),
+    )
 
     return {
         "events":            events,
