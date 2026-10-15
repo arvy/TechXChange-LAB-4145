@@ -132,7 +132,7 @@ The lab is built around a five-stage pipeline:
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
 │            watsonx.data (Iceberg / Parquet)                  │
-│  my_data.affiliate_junction_<your-id>.kafka_events          │
+│  demo_data.affiliate_junction_<your-id>.kafka_events          │
 │  Presto engine: presto44                                    │
 └────────────┬──────────────────────────┬──────────────────────┘
              │ metadata enrichment       │ SQL queries
@@ -201,10 +201,27 @@ Your lab instructor will provide a credential sheet with:
 |---|---|
 | `ATTENDEE_ID` | e.g. `student01` — assigned at lab start |
 | IBM Bob licence key | Printed on your credential sheet |
-| IBM Cloud API key | Printed on your credential sheet |
+| IBM Cloud login URL | Printed on your credential sheet |
+| IBM Cloud username & password | Printed on your credential sheet |
 | Kafka SASL password | Printed on your credential sheet |
 
 All other values (broker address, instance CRN, etc.) are the same for all attendees and are pre-filled in the steps below.
+
+#### Log in to IBM Cloud and generate your API key
+
+1. Open the URL from your credential sheet in a browser (e.g. `https://cloud.ibm.com`) and sign in with the student username and password provided.
+
+2. Once logged in, navigate to **Manage → Access (IAM) → API Keys** using the top navigation bar.
+
+3. Click **Create an IBM Cloud API key**.
+
+4. Give it a name (e.g. `techxchange-lab-key`) and click **Create**.
+
+5. **Copy the key immediately** — it is only shown once. Paste it somewhere safe (e.g. a text editor) before closing the dialog.
+
+   > **Important:** If you close the dialog without copying the key, you will need to delete it and create a new one. The key cannot be retrieved after the dialog is closed.
+
+You will use this API key in section 4.4 when configuring your `.env` file and in section 5.3 when setting up the MCP server connections.
 
 ### 4.2 Install IBM Bob and open the lab repository
 
@@ -276,7 +293,7 @@ WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse
 WATSONX_DATA_API_KEY=<your IBM Cloud API key from TechZone>
 WATSONX_DATA_INSTANCE_ID=crn:v1:bluemix:public:lakehouse:ca-tor:a/13821c80b84a4240820821b6b40185c9:8afc678c-3e67-4589-ad0d-ee93c8346dc4::
 WATSONX_DATA_ENGINE_ID=presto44
-WATSONX_DATA_TARGET_TABLE=my_data.affiliate_junction_<your-attendee-id>.kafka_events
+WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
 > **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student01`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
@@ -303,13 +320,13 @@ Run the following SQL, replacing `<your-attendee-id>` with your assigned ID:
 
 ```sql
 -- Step 1: Create your personal schema
-CREATE SCHEMA IF NOT EXISTS my_data.affiliate_junction_student01
-WITH (location = 's3a://my-data/affiliate_junction_student01/');
+CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_student01
+WITH (location = 's3a://watsonx-data-76a38762-ab88-4c5a-91d7-9b32184e20c5/affiliate_junction_student01');
 ```
 
 ```sql
 -- Step 2: Create the landing table
-CREATE TABLE IF NOT EXISTS my_data.affiliate_junction_student01.kafka_events (
+CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student01.kafka_events (
     event_id                    varchar,
     event_type                  varchar,
     event_timestamp             timestamp,
@@ -333,7 +350,7 @@ CREATE TABLE IF NOT EXISTS my_data.affiliate_junction_student01.kafka_events (
 
 ```sql
 -- Step 3: Verify
-SELECT * FROM my_data.affiliate_junction_student01.kafka_events LIMIT 5;
+SELECT * FROM demo_data.affiliate_junction_student01.kafka_events LIMIT 5;
 -- Should return: (no rows) — table is empty for now
 ```
 
@@ -504,7 +521,7 @@ The response should be:
   "kafka_count": 50,
   "kafka_errors": [],
   "job_status": "completed",
-  "target_table": "my_data.affiliate_junction_student01.kafka_events"
+  "target_table": "demo_data.affiliate_junction_student01.kafka_events"
 }
 ```
 
@@ -523,13 +540,13 @@ Go back to the watsonx.data **Query Workspace** and run:
 ```sql
 -- How many rows landed?
 SELECT count(*) AS row_count
-FROM my_data.affiliate_junction_student01.kafka_events;
+FROM demo_data.affiliate_junction_student01.kafka_events;
 ```
 
 ```sql
 -- What event types do we have?
 SELECT event_type, count(*) AS cnt
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 GROUP BY event_type
 ORDER BY cnt DESC;
 ```
@@ -537,7 +554,7 @@ ORDER BY cnt DESC;
 ```sql
 -- Show 5 sample rows
 SELECT event_id, event_type, publisher_id, cookie_type, cohort, ingested_at
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 LIMIT 5;
 ```
 
@@ -668,7 +685,7 @@ SELECT
     cohort,
     ROUND(AVG(time_to_conversion_seconds), 1) AS avg_seconds,
     COUNT(*) AS conversions
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 WHERE event_type = 'conversion_identified'
   AND cohort IS NOT NULL
 GROUP BY cohort
@@ -775,8 +792,8 @@ Cause: Usually a SQL syntax error or a type mismatch.
 
 Solution:
 1. Check that your `WATSONX_DATA_TARGET_TABLE` in `.env` exactly matches the table you created (including your attendee ID).
-2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN my_data.affiliate_junction_student01`.
-3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM my_data.affiliate_junction_student01.kafka_events using presto44`.
+2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_student01`.
+3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_student01.kafka_events using presto44`.
 
 ---
 
@@ -863,13 +880,13 @@ ingested_at                 timestamp  — when the row was written to Iceberg
 ```sql
 -- Event type distribution
 SELECT event_type, count(*) AS cnt
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 GROUP BY event_type ORDER BY cnt DESC;
 
 -- Fraud cookie volume
 SELECT cookie_type, count(*) AS cnt,
        ROUND(100.0 * count(*) / sum(count(*)) OVER (), 1) AS pct
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 WHERE event_type = 'impression'
 GROUP BY cookie_type;
 
@@ -877,13 +894,13 @@ GROUP BY cookie_type;
 SELECT cohort,
        count(*) AS conversions,
        ROUND(AVG(time_to_conversion_seconds), 0) AS avg_seconds
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 WHERE event_type = 'conversion_identified'
 GROUP BY cohort ORDER BY avg_seconds;
 
 -- Top publishers by impression volume
 SELECT publisher_id, count(*) AS impressions
-FROM my_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student01.kafka_events
 WHERE event_type = 'impression'
 GROUP BY publisher_id ORDER BY impressions DESC LIMIT 10;
 ```
