@@ -7,15 +7,12 @@ Confluent Platform topic. Implements the event schema defined in the
 ## Quick start
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
-
-# 2. Configure connection
+# 1. Configure connection
 cp env-sample .env
 # Edit .env — at minimum set KAFKA_BOOTSTRAP_SERVERS
 
-# 3. Run
-python producer.py
+# 2. Run (dependencies are managed by uv at the repo root)
+uv run producer
 ```
 
 ## What it produces
