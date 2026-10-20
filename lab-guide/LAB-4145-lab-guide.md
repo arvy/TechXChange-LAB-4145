@@ -36,9 +36,10 @@
    - 5.5 [Land events into your Iceberg table](#55-land-events-into-your-iceberg-table)
    - 5.6 [Verify the data in watsonx.data](#56-verify-the-data-in-watsonxdata)
 6. [Exercise 2 — Govern: Automated metadata cataloguing (~25 min)](#6-exercise-2--govern-automated-metadata-cataloguing-25-min)
-   - 6.1 [Connect watsonx.data Intelligence to your table](#61-connect-watsonxdata-intelligence-to-your-table)
-   - 6.2 [Run metadata enrichment](#62-run-metadata-enrichment)
-   - 6.3 [Inspect generated metadata via MCP](#63-inspect-generated-metadata-via-mcp)
+   - 6.1 [Set up watsonx.data Intelligence](#61-set-up-watsonxdata-intelligence)
+   - 6.2 [Connect watsonx.data Intelligence to your table](#62-connect-watsonxdata-intelligence-to-your-table)
+   - 6.3 [Run metadata enrichment](#63-run-metadata-enrichment)
+   - 6.4 [Inspect generated metadata via MCP](#64-inspect-generated-metadata-via-mcp)
 7. [Exercise 3 — Query: Natural language analytics (~25 min)](#7-exercise-3--query-natural-language-analytics-25-min)
    - 7.1 [Ask questions about your data using Bob](#71-ask-questions-about-your-data-using-bob)
    - 7.2 [Run analytical queries via the watsonx.data MCP server](#72-run-analytical-queries-via-the-watsonxdata-mcp-server)
@@ -428,10 +429,11 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "disabled": false
     },
     "wxdi-mcp-server": {
-      "command": "uvx",
-      "args": ["--with", "mcp[cli]<2", "ibm-watsonx-data-intelligence-mcp-server", "--transport", "stdio"],
+      "command": "<absolute-path-to>/data-intelligence-mcp-server/.venv/bin/python",
+      "args": ["-m", "app.main", "--transport", "stdio"],
+      "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
       "env": {
-        "DI_SERVICE_URL": "https://api.dataplatform.cloud.ibm.com",
+        "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
         "DI_APIKEY": "<your IBM Cloud API key from credential sheet>",
         "DI_ENV_MODE": "SaaS",
         "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
@@ -443,7 +445,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 }
 ```
 
-> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. `uvx` runs each server in an isolated environment — no manual install needed. The first run will download the package automatically (requires internet access).
+> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` uses a local patched clone (see section 6.1 Step 3 for setup instructions).
 
 #### Step 3 — Reload Bob
 
@@ -568,9 +570,95 @@ You should see rows in all three event types, with `ingested_at` timestamps from
 
 In this exercise you will use **watsonx.data Intelligence** — connected to Bob via its own MCP server — to automatically catalogue the schema you just landed, assign business terms, and classify sensitive fields.
 
-### 6.1 Connect watsonx.data Intelligence to your table
+### 6.1 Set up watsonx.data Intelligence
 
-Bob already has access to the watsonx.data Intelligence MCP server (`wxdi-mcp-server`). Ask Bob to find your asset:
+Before Bob can run metadata imports, you need to complete three one-time setup steps in the UI and terminal.
+
+#### Step 1 — Create your project in watsonx.data Intelligence
+
+1. Open [cloud.ibm.com/authorize/e13cdedaed9949e9ac5fab1bfd2eeefb/1zRGU7wWWH](https://cloud.ibm.com/authorize/e13cdedaed9949e9ac5fab1bfd2eeefb/1zRGU7wWWH) and sign in with your TechZone credentials. This link logs you directly into the correct IBM Cloud account.
+2. Once logged in, click **Resource list** in the left navigation.
+3. Under the **AI / Machine Learning** category, find and click your **watsonx.data Intelligence** instance. This opens the watsonx.data Intelligence portal.
+4. Click **Projects** in the left navigation, then **New project**.
+5. Name it `Affiliate Junction` (or any name you prefer) and click **Create**.
+
+> **Note:** The project is where your metadata imports, enrichment jobs, and catalogued assets will live.
+
+#### Step 2 — Create your watsonx.data Presto connection
+
+The metadata import needs a connection to your watsonx.data instance. You will create it using the JSON export from the watsonx.data console.
+
+**Get the connection JSON:**
+
+1. Open the [watsonx.data console](https://console-ibm-cator.lakehouse.saas.ibm.com).
+2. Go to **Infrastructure Manager** → click your **Starter** Presto engine → **Details**.
+3. Click **Connect information** and copy the JSON from the **Connection details** field. It looks like:
+
+```json
+{
+  "connection_name": "Starter",
+  "properties": {
+    "connection": [
+      {"name": "host", "value": "console-ibm-cator.lakehouse.saas.ibm.com"},
+      {"name": "port", "value": "443"},
+      {"name": "cloud_resource_name", "value": "crn:v1:bluemix:..."},
+      {"name": "deployment_type", "value": "saas"},
+      ...
+    ]
+  }
+}
+```
+
+**Create the connection in Intelligence:**
+
+1. In your **Affiliate Junction** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
+2. Search for and select **IBM watsonx.data Presto**.
+3. Click **Import connection values** and paste the JSON you copied above — the fields will auto-populate.
+4. Under **Credentials**, enter your IBM Cloud API key (from section 4.1).
+5. Name the connection `wx_presto_connect` and click **Create**.
+
+#### Step 3 — Check out the MCP server fix branch
+
+The published `ibm-watsonx-data-intelligence-mcp-server` package has a known bug where metadata imports cannot find connections that use personal credentials. A fix has been submitted upstream. In this step you will check out the patched source and point Bob at it.
+
+Clone the repository and check out the fix branch:
+
+```bash
+git clone https://github.com/IBM/data-intelligence-mcp-server.git
+cd data-intelligence-mcp-server
+git remote add arvy https://github.com/arvy/data-intelligence-mcp-server.git
+git fetch arvy
+git checkout arvy/fix/find-connection-id-personal-credentials
+uv sync
+```
+
+> **What does this fix?** The bug is in `find_connection_id` in `app/services/tool_utils.py`. The function used the `GET /v2/connections?project_id=...` list endpoint, which hides connections flagged as `personal_credentials`. The fix replaces it with a global search query (`POST /v3/search`) that correctly surfaces personal connections to their owner.
+
+Now update your global Bob MCP config (`~/.bob/settings/mcp.json`) to use the local patched source instead of `uvx`. Replace the `wxdi-mcp-server` entry with:
+
+```json
+"wxdi-mcp-server": {
+  "command": "<absolute-path-to>/data-intelligence-mcp-server/.venv/bin/python",
+  "args": ["-m", "app.main", "--transport", "stdio"],
+  "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
+  "env": {
+    "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
+    "DI_APIKEY": "<your IBM Cloud API key>",
+    "DI_ENV_MODE": "SaaS",
+    "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
+  },
+  "disabled": false,
+  "alwaysAllow": []
+}
+```
+
+> **Important:** Replace `<absolute-path-to>` with the full path where you cloned the repo (e.g. `/home/student01/data-intelligence-mcp-server`). Also note the Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com` — not the default `api.dataplatform.cloud.ibm.com`.
+
+Reload Bob (`Ctrl+Shift+P` → **Developer: Reload Window**) to pick up the changes.
+
+### 6.2 Connect watsonx.data Intelligence to your table
+
+Bob now has access to the patched watsonx.data Intelligence MCP server. Ask Bob to find your asset:
 
 ```
 Find my kafka_events table in watsonx.data Intelligence.
@@ -585,11 +673,11 @@ Import my kafka_events table from watsonx.data into the Intelligence catalogue.
 ```
 
 Bob will:
-1. Call `create_metadata_import` to register the import
-2. Call `execute_metadata_import` to run it
-3. Return the job monitoring URL
+1. Call `create_or_update_metadata_import` to register the import scoped to your table
+2. Call `run_metadata_import` to execute it
+3. Poll until the job completes and return the result
 
-### 6.2 Run metadata enrichment
+### 6.3 Run metadata enrichment
 
 Once the asset is imported, ask Bob to enrich it:
 
@@ -609,7 +697,7 @@ Wait for the job to complete (typically 2–3 minutes). Ask Bob:
 How is the enrichment job going?
 ```
 
-### 6.3 Inspect generated metadata via MCP
+### 6.4 Inspect generated metadata via MCP
 
 Once enrichment completes, ask Bob to show you what was discovered:
 
