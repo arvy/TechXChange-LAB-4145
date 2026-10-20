@@ -580,7 +580,7 @@ Before Bob can run metadata imports, you need to complete three one-time setup s
 2. Once logged in, click **Resource list** in the left navigation.
 3. Under the **AI / Machine Learning** category, find and click your **watsonx.data Intelligence** instance. This opens the watsonx.data Intelligence portal.
 4. Click **Projects** in the left navigation, then **New project**.
-5. Name it `Affiliate Junction` (or any name you prefer) and click **Create**.
+5. Name it `Affiliate Junction - student01` (replace `student01` with your attendee ID) and click **Create**.
 
 > **Note:** The project is where your metadata imports, enrichment jobs, and catalogued assets will live.
 
@@ -611,7 +611,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 **Create the connection in Intelligence:**
 
-1. In your **Affiliate Junction** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
+1. In your **Affiliate Junction - student01** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
 2. Search for and select **IBM watsonx.data Presto**.
 3. Click **Import connection values** and paste the JSON you copied above — the fields will auto-populate.
 4. Under **Credentials**, enter your IBM Cloud API key (from section 4.1).
