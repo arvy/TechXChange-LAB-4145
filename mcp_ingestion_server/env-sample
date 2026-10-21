@@ -32,4 +32,4 @@ WATSONX_DATA_INSTANCE_ID=
 WATSONX_DATA_ENGINE_ID=presto44
 
 # Target Iceberg table for ingestion
-WATSONX_DATA_TARGET_TABLE=my_data.affiliate_junction.kafka_events
+WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction.kafka_events

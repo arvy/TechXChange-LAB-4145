@@ -41,6 +41,7 @@ Key variables:
 | `KAFKA_TOPIC` | `affiliate-junction-events` | Target topic |
 | `KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` | `PLAINTEXT` for local VM; `SASL_SSL` for Confluent Cloud |
 | `AFFILIATE_JUNCTION_CYCLE_SECONDS` | `60` | Seconds between publish cycles |
+| `AFFILIATE_JUNCTION_MAX_CYCLES` | `1` | Cycles to publish before exiting (~5 900 events each); `0` = run until interrupted |
 | `AFFILIATE_JUNCTION_TRAFFIC_MIN` | `5000` | Impressions per cycle |
 | `AFFILIATE_JUNCTION_SALES_MIN` | `500` | Conversions per cycle |
 
@@ -63,5 +64,8 @@ KAFKA_SASL_PASSWORD=<api-secret>
 
 ## Stopping
 
-`Ctrl-C` (or `SIGTERM`) triggers a graceful shutdown — the current cycle
-finishes, pending messages are flushed, and the process exits cleanly.
+By default the producer publishes `AFFILIATE_JUNCTION_MAX_CYCLES` cycles (one),
+flushes, and exits. Set it to `0` to run continuously.
+
+`Ctrl-C` (or `SIGTERM`) triggers a graceful shutdown at any time — the current
+cycle finishes, pending messages are flushed, and the process exits cleanly.

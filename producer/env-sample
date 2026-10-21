@@ -40,6 +40,10 @@ AFFILIATE_JUNCTION_SALES_MIN=500
 # Seconds between publish cycles (default 60 = ~real-time 1-minute cadence)
 AFFILIATE_JUNCTION_CYCLE_SECONDS=60
 
+# Number of cycles to publish before the producer exits (~5 900 events per cycle
+# with the defaults above). Set to 0 to run until interrupted.
+AFFILIATE_JUNCTION_MAX_CYCLES=1
+
 # ---------------------------------------------------------------------------
 # Fraud and cohort simulation
 # ---------------------------------------------------------------------------

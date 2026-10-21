@@ -49,6 +49,9 @@ SALES_PER_CYCLE     = int(os.getenv("AFFILIATE_JUNCTION_SALES_MIN", "500"))
 HISTORY_MINS        = int(os.getenv("AFFILIATE_JUNCTION_HISTORY_MINS", "90"))
 FRAUD_COOKIES_COUNT = int(os.getenv("AFFILIATE_JUNCTION_FRAUD_COOKIES_COUNT", "5"))
 CYCLE_SECONDS       = int(os.getenv("AFFILIATE_JUNCTION_CYCLE_SECONDS", "60"))
+# Number of cycles to publish before exiting. 0 = run until interrupted.
+# One default cycle is ~5 900 events, enough for the whole workshop.
+MAX_CYCLES          = int(os.getenv("AFFILIATE_JUNCTION_MAX_CYCLES", "1"))
 
 COHORTS = os.getenv(
     "AFFILIATE_JUNCTION_COHORTS", "TECH,FASHION,HEALTH,FINANCE,TRAVEL"
@@ -298,6 +301,8 @@ def run():
     logger.info("  Topic             : %s", KAFKA_TOPIC)
     logger.info("  Cycle             : %ds  (%d impressions, %d sales)",
                 CYCLE_SECONDS, TRAFFIC_PER_CYCLE, SALES_PER_CYCLE)
+    logger.info("  Max cycles        : %s",
+                MAX_CYCLES if MAX_CYCLES > 0 else "unlimited")
 
     advertisers, publishers, publishers_data, fraud_cookies, cohort_cookies, random_cookies, all_cookies = (
         build_data_pools()
@@ -317,7 +322,7 @@ def run():
     signal.signal(signal.SIGTERM, _shutdown)
 
     cycle = 0
-    while running:
+    while running and (MAX_CYCLES <= 0 or cycle < MAX_CYCLES):
         cycle_start = time.time()
         cycle += 1
         now = datetime.now(UTC)
@@ -366,6 +371,9 @@ def run():
             "Cycle %d complete in %.2fs — %d impressions, %d conversions, %d attributed",
             cycle, elapsed, impression_count, conversion_count, attributed_count,
         )
+
+        if MAX_CYCLES > 0 and cycle >= MAX_CYCLES:
+            break
 
         sleep_for = max(0.0, CYCLE_SECONDS - elapsed)
         if sleep_for > 0 and running:

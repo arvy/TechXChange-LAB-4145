@@ -18,9 +18,12 @@ import os
 import time
 
 import requests
-from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
+from confluent_kafka import Consumer, KafkaError, KafkaException
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+
+# Max rows per INSERT … VALUES statement (Presto rejects very large statements)
+INSERT_CHUNK_SIZE = 500
 
 # Resolve paths relative to the project root (one level up from this file).
 _HERE        = os.path.dirname(os.path.abspath(__file__))
@@ -47,9 +50,11 @@ def _build_consumer_config(group_id: str) -> dict:
     cfg = {
         "bootstrap.servers":  os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
         "group.id":           group_id,
-        # Used only for offset storage; actual partition assignment is manual
-        # via consumer.assign() so all partitions are polled on every call.
+        # Start from the earliest unread offset for this group.
+        # On first run (new group) this means the beginning of the topic.
         "auto.offset.reset":  "earliest",
+        # Disable automatic offset commits — we commit only after
+        # successfully processing the full batch.
         "enable.auto.commit": False,
     }
     protocol = os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
@@ -101,6 +106,80 @@ def _parse_message(raw: str) -> dict | None:
 # MCP tool
 # ---------------------------------------------------------------------------
 
+def _consume_batch(
+    batch_size: int,
+    timeout_seconds: float,
+    consumer_group_id: str,
+    before_commit=None,
+) -> dict:
+    """Poll Kafka and return a batch of parsed events.
+
+    If `before_commit` is given it is called with the list of events before
+    offsets are committed. If it raises, offsets are NOT committed, so the
+    messages will be re-delivered on the next call.
+    """
+    topic    = os.getenv("KAFKA_TOPIC", "affiliate-junction-events")
+    cfg      = _build_consumer_config(consumer_group_id)
+
+    logger.info(
+        "subscribe_and_ingest: topic=%s group=%s batch=%d timeout=%.1fs",
+        topic, consumer_group_id, batch_size, timeout_seconds,
+    )
+
+    consumer = Consumer(cfg)
+    events: list[dict] = []
+    errors: list[str]  = []
+
+    try:
+        consumer.subscribe([topic])
+
+        # Poll until we have a full batch or time runs out
+        deadline = time.monotonic() + timeout_seconds
+
+        while len(events) < batch_size and time.monotonic() < deadline:
+            remaining = max(0.0, deadline - time.monotonic())
+            msg = consumer.poll(timeout=min(1.0, remaining))
+
+            if msg is None:
+                # No message within the 1s poll window — keep waiting
+                continue
+
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    # Reached end of a partition — not an error
+                    logger.debug("Partition EOF: %s [%d]", msg.topic(), msg.partition())
+                    continue
+                raise KafkaException(msg.error())
+
+            parsed = _parse_message(msg.value().decode("utf-8"))
+            if parsed:
+                events.append(parsed)
+            else:
+                errors.append(f"partition={msg.partition()} offset={msg.offset()}")
+
+        # Commit offsets only after the full batch is collected and, if a
+        # callback was supplied, after it has succeeded
+        if before_commit is not None and events:
+            before_commit(events)
+        consumer.commit(asynchronous=False)
+
+        logger.info(
+            "subscribe_and_ingest complete: %d events, %d errors",
+            len(events), len(errors),
+        )
+
+    finally:
+        consumer.close()
+
+    return {
+        "events":            events,
+        "count":             len(events),
+        "topic":             topic,
+        "consumer_group_id": consumer_group_id,
+        "errors":            errors,
+    }
+
+
 @mcp.tool()
 def subscribe_and_ingest(
     batch_size: int = 100,
@@ -128,92 +207,7 @@ def subscribe_and_ingest(
           - consumer_group_id: the group ID used
           - errors: list of any per-message parse errors encountered
     """
-    topic        = os.getenv("KAFKA_TOPIC", "affiliate-junction-events")
-    num_partitions = int(os.getenv("KAFKA_TOPIC_PARTITIONS", "3"))
-    cfg          = _build_consumer_config(consumer_group_id)
-
-    logger.info(
-        "subscribe_and_ingest: topic=%s group=%s batch=%d timeout=%.1fs",
-        topic, consumer_group_id, batch_size, timeout_seconds,
-    )
-
-    # Use one consumer per partition so each consumer's internal fetch buffer
-    # is scoped to a single partition.  This is the only reliable way to get
-    # an even mix of event types without fighting confluent-kafka's pre-fetch.
-    per_partition = max(1, batch_size // num_partitions)
-    deadline      = time.monotonic() + timeout_seconds
-    events: list[dict] = []
-    errors: list[str]  = []
-
-    # First: read committed offsets using a single temporary consumer
-    offset_consumer = Consumer(cfg)
-    try:
-        committed = offset_consumer.committed(
-            [TopicPartition(topic, p) for p in range(num_partitions)]
-        )
-    finally:
-        offset_consumer.close()
-
-    partition_offsets = {
-        tp.partition: max(tp.offset, 0) for tp in committed
-    }
-
-    # Then: one consumer per partition, each collecting its quota
-    for p in range(num_partitions):
-        if len(events) >= batch_size or time.monotonic() >= deadline:
-            break
-
-        start_offset = partition_offsets[p]
-        tp = TopicPartition(topic, p, start_offset)
-
-        consumer = Consumer(cfg)
-        try:
-            consumer.assign([tp])
-            collected = 0
-            while collected < per_partition and time.monotonic() < deadline:
-                remaining = max(0.0, deadline - time.monotonic())
-                msg = consumer.poll(timeout=min(1.0, remaining))
-                if msg is None:
-                    break
-                if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
-                        break
-                    raise KafkaException(msg.error())
-                parsed = _parse_message(msg.value().decode("utf-8"))
-                if parsed:
-                    events.append(parsed)
-                    collected += 1
-                    partition_offsets[p] = msg.offset() + 1
-                else:
-                    errors.append(f"partition={p} offset={msg.offset()}")
-        finally:
-            consumer.close()
-
-    # Commit final offsets via a fresh consumer
-    if events:
-        commit_tps = [
-            TopicPartition(topic, p, off)
-            for p, off in partition_offsets.items()
-        ]
-        commit_consumer = Consumer(cfg)
-        try:
-            commit_consumer.assign(commit_tps)
-            commit_consumer.commit(offsets=commit_tps, asynchronous=False)
-        finally:
-            commit_consumer.close()
-
-    logger.info(
-        "subscribe_and_ingest complete: %d events, %d errors",
-        len(events), len(errors),
-    )
-
-    return {
-        "events":            events,
-        "count":             len(events),
-        "topic":             topic,
-        "consumer_group_id": consumer_group_id,
-        "errors":            errors,
-    }
+    return _consume_batch(batch_size, timeout_seconds, consumer_group_id)
 
 
 # ---------------------------------------------------------------------------
@@ -253,8 +247,8 @@ def _run_sql_job(sql: str, engine_id: str, token: str) -> dict:
     }
 
     # Derive catalog from target table (first component of fully-qualified name)
-    catalog = os.getenv("WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events").split(".")[0]
-    schema  = os.getenv("WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events").split(".")[1]
+    catalog = os.getenv("WATSONX_DATA_TARGET_TABLE", "demo_data.affiliate_junction.kafka_events").split(".")[0]
+    schema  = os.getenv("WATSONX_DATA_TARGET_TABLE", "demo_data.affiliate_junction.kafka_events").split(".")[1]
 
     path = f"{base_url}/v3/v1/statement?engine_id={engine_id}"
 
@@ -381,7 +375,7 @@ def ingest_to_iceberg(
             attendee to maintain independent offsets (default
             "mcp-iceberg-default").
         target_table: Fully-qualified Iceberg table name
-            (default "my_data.affiliate_junction.kafka_events").
+            (default "demo_data.affiliate_junction.kafka_events").
         engine_id: watsonx.data Presto engine to use (default "presto44").
 
     Returns:
@@ -395,47 +389,50 @@ def ingest_to_iceberg(
     # Resolve defaults from env so attendees only need to configure .env
     if target_table is None:
         target_table = os.getenv(
-            "WATSONX_DATA_TARGET_TABLE", "my_data.affiliate_junction.kafka_events"
+            "WATSONX_DATA_TARGET_TABLE", "demo_data.affiliate_junction.kafka_events"
         )
     if engine_id is None:
         engine_id = os.getenv("WATSONX_DATA_ENGINE_ID", "presto44")
 
-    # Step 1 — consume from Kafka
-    kafka_result = subscribe_and_ingest(
+    state = {"rows_written": 0, "status": "skipped"}
+
+    def _write_chunks(events: list[dict]) -> None:
+        """INSERT events in chunks. Raises on failure so Kafka offsets are
+        not committed and the messages are re-delivered on the next call."""
+        token = _get_iam_token()
+        for i in range(0, len(events), INSERT_CHUNK_SIZE):
+            chunk = events[i:i + INSERT_CHUNK_SIZE]
+            sql   = _events_to_insert_sql(chunk, target_table)
+            logger.info(
+                "ingest_to_iceberg: inserting rows %d-%d of %d into %s",
+                i + 1, i + len(chunk), len(events), target_table,
+            )
+            job = _run_sql_job(sql, engine_id, token)
+            state["status"] = job.get("status", "unknown")
+            if state["status"] != "completed":
+                raise RuntimeError(
+                    f"INSERT chunk starting at row {i + 1} ended with status "
+                    f"{state['status']}; {state['rows_written']} rows were "
+                    f"already written and Kafka offsets were not committed"
+                )
+            state["rows_written"] += len(chunk)
+
+    # Consume from Kafka, write to Iceberg, and only then commit offsets
+    kafka_result = _consume_batch(
         batch_size=batch_size,
         timeout_seconds=timeout_seconds,
         consumer_group_id=consumer_group_id,
-    )
-    events = kafka_result["events"]
-
-    if not events:
-        logger.info("ingest_to_iceberg: no events consumed, skipping INSERT")
-        return {
-            "rows_written":  0,
-            "kafka_count":   0,
-            "kafka_errors":  kafka_result["errors"],
-            "job_status":    "skipped",
-            "target_table":  target_table,
-        }
-
-    # Step 2 — build INSERT SQL
-    sql = _events_to_insert_sql(events, target_table)
-    logger.info(
-        "ingest_to_iceberg: inserting %d rows into %s", len(events), target_table
+        before_commit=_write_chunks,
     )
 
-    # Step 3 — get IAM token and run the SQL job
-    token  = _get_iam_token()
-    job    = _run_sql_job(sql, engine_id, token)
-    status = job.get("status", "unknown")
-
-    logger.info("ingest_to_iceberg: job %s — status=%s", job.get("job_id"), status)
+    if not kafka_result["events"]:
+        logger.info("ingest_to_iceberg: no events consumed, skipped INSERT")
 
     return {
-        "rows_written":  len(events) if status == "completed" else 0,
+        "rows_written":  state["rows_written"],
         "kafka_count":   kafka_result["count"],
         "kafka_errors":  kafka_result["errors"],
-        "job_status":    status,
+        "job_status":    state["status"],
         "target_table":  target_table,
     }
 

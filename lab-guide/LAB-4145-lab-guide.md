@@ -200,7 +200,7 @@ Your lab instructor will provide a credential sheet with:
 
 | Item | Where to find it |
 |---|---|
-| `ATTENDEE_ID` | e.g. `student01` — assigned at lab start |
+| `ATTENDEE_ID` | e.g. `student1` — assigned at lab start |
 | IBM Bob licence key | Printed on your credential sheet |
 | IBM Cloud login URL | Printed on your credential sheet |
 | IBM Cloud username & password | Printed on your credential sheet |
@@ -297,7 +297,7 @@ WATSONX_DATA_ENGINE_ID=presto44
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
-> **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student01`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
+> **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student1`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
 
 > **Note:** The producer is already running centrally — you do not need to configure or start it.
 
@@ -321,13 +321,13 @@ Run the following SQL, replacing `<your-attendee-id>` with your assigned ID:
 
 ```sql
 -- Step 1: Create your personal schema
-CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_student01
-WITH (location = 's3a://watsonx-data-76a38762-ab88-4c5a-91d7-9b32184e20c5/affiliate_junction_student01');
+CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_student1
+WITH (location = 's3a://watsonx-data-76a38762-ab88-4c5a-91d7-9b32184e20c5/affiliate_junction_student1');
 ```
 
 ```sql
 -- Step 2: Create the landing table
-CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student01.kafka_events (
+CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student1.kafka_events (
     event_id                    varchar,
     event_type                  varchar,
     event_timestamp             timestamp,
@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student01.kafka_events (
 
 ```sql
 -- Step 3: Verify
-SELECT * FROM demo_data.affiliate_junction_student01.kafka_events LIMIT 5;
+SELECT * FROM demo_data.affiliate_junction_student1.kafka_events LIMIT 5;
 -- Should return: (no rows) — table is empty for now
 ```
 
@@ -523,7 +523,7 @@ The response should be:
   "kafka_count": 50,
   "kafka_errors": [],
   "job_status": "completed",
-  "target_table": "demo_data.affiliate_junction_student01.kafka_events"
+  "target_table": "demo_data.affiliate_junction_student1.kafka_events"
 }
 ```
 
@@ -533,7 +533,16 @@ Once that works, try an even more natural prompt that lets Bob choose sensible d
 Grab some live events from the Kafka topic and write them to watsonx.data.
 ```
 
-> **Ingest more data:** Ask Bob to *"keep pulling events from Kafka and writing them to my table"* — Bob will loop the calls autonomously until you stop it or the topic is exhausted. Load at least 200 rows before moving to Exercise 2.
+> **Ingest more data:** Ask Bob to *"keep pulling events from Kafka and writing them to my table"* — Bob will loop the calls until you stop it or the topic is exhausted. A call that returns fewer rows than the batch size means the topic is empty. Load the whole topic before moving to Exercise 2. Exercise 3 queries conversions and fraud patterns, and those event types are only a small share of the stream, so a small load may contain no fraud events at all.
+>
+> **Keep each batch to 1 000 events or fewer** (for example: *"Ingest 1000 events at a time with a 45 second timeout, four times, and check the row count between calls."*). Very large batches can exceed the tool-call timeout. If a call times out, **do not simply retry** — the first call may still be running and a retry would load the same events twice. Check the row count first:
+>
+> ```sql
+> SELECT count(*) AS total, count(DISTINCT event_id) AS distinct_events
+> FROM demo_data.affiliate_junction_student1.kafka_events;
+> ```
+>
+> If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE FROM demo_data.affiliate_junction_student1.kafka_events;` and reload using a fresh `consumer_group_id`.
 
 ### 5.6 Verify the data in watsonx.data
 
@@ -542,13 +551,13 @@ Go back to the watsonx.data **Query Workspace** and run:
 ```sql
 -- How many rows landed?
 SELECT count(*) AS row_count
-FROM demo_data.affiliate_junction_student01.kafka_events;
+FROM demo_data.affiliate_junction_student1.kafka_events;
 ```
 
 ```sql
 -- What event types do we have?
 SELECT event_type, count(*) AS cnt
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 GROUP BY event_type
 ORDER BY cnt DESC;
 ```
@@ -556,11 +565,19 @@ ORDER BY cnt DESC;
 ```sql
 -- Show 5 sample rows
 SELECT event_id, event_type, publisher_id, cookie_type, cohort, ingested_at
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 LIMIT 5;
 ```
 
 You should see rows in all three event types, with `ingested_at` timestamps from the current session.
+
+**Optional: double-check with Bob.** Ask Bob to run the same check through the watsonx.data MCP server and compare the answer with what the console showed:
+
+```
+How many rows are in my kafka_events table, and how many events of each type?
+```
+
+If the numbers differ from the console, check that both use the same schema (`affiliate_junction_<your student ID>`).
 
 ✅ **Exercise 1 complete.** You have built a live streaming ingestion pipeline controlled entirely by an AI agent via MCP.
 
@@ -580,7 +597,7 @@ Before Bob can run metadata imports, you need to complete three one-time setup s
 2. Once logged in, click **Resource list** in the left navigation.
 3. Under the **AI / Machine Learning** category, find and click your **watsonx.data Intelligence** instance. This opens the watsonx.data Intelligence portal.
 4. Click **Projects** in the left navigation, then **New project**.
-5. Name it `Affiliate Junction - student01` (replace `student01` with your attendee ID) and click **Create**.
+5. Name it `Affiliate Junction - student1` (replace `student1` with your attendee ID) and click **Create**.
 
 > **Note:** The project is where your metadata imports, enrichment jobs, and catalogued assets will live.
 
@@ -611,7 +628,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 **Create the connection in Intelligence:**
 
-1. In your **Affiliate Junction - student01** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
+1. In your **Affiliate Junction - student1** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
 2. Search for and select **IBM watsonx.data Presto**.
 3. Click **Import connection values** and paste the JSON you copied above — the fields will auto-populate.
 4. Under **Credentials**, enter your IBM Cloud API key (from section 4.1).
@@ -652,7 +669,7 @@ Now update your global Bob MCP config (`~/.bob/settings/mcp.json`) to use the lo
 }
 ```
 
-> **Important:** Replace `<absolute-path-to>` with the full path where you cloned the repo (e.g. `/home/student01/data-intelligence-mcp-server`). Also note the Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com` — not the default `api.dataplatform.cloud.ibm.com`.
+> **Important:** Replace `<absolute-path-to>` with the full path where you cloned the repo (e.g. `/home/student1/data-intelligence-mcp-server`). Also note the Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com` — not the default `api.dataplatform.cloud.ibm.com`.
 
 Reload Bob (`Ctrl+Shift+P` → **Developer: Reload Window**) to pick up the changes.
 
@@ -677,6 +694,8 @@ Bob will:
 2. Call `run_metadata_import` to execute it
 3. Poll until the job completes and return the result
 
+> **Watch for an empty import.** The import scope must include the catalog name: `/<catalog>/<schema>/<table>`, for example `/demo_data/affiliate_junction_student0/kafka_events`. Bob cannot reliably discover this path, because the path-listing tool returns nothing for this connection, so it may leave out the catalog. An import with the wrong scope still reports success, but it finds **0 assets**. Check that the result shows 1 imported asset. If it shows 0, tell Bob the full scope above and ask it to update the import and run it again.
+
 ### 6.3 Run metadata enrichment
 
 Once the asset is imported, ask Bob to enrich it:
@@ -688,7 +707,7 @@ Analyse my kafka_events table — profile the data and suggest business terms fo
 Bob will:
 1. Create a Metadata Enrichment area (MDE) if one doesn't exist
 2. Add the `kafka_events` asset to it
-3. Create an enrichment job with `profile` and `assign_terms` objectives
+3. Create an enrichment job with the `profile`, `assign_terms`, `dq_gen_constraints` (identify data quality checks) and `analyze_quality` (run data quality checks) objectives. Quality scores need **both** quality objectives: without generated checks, the run reports success but produces no scores.
 4. Execute the job
 
 Wait for the job to complete (typically 2–3 minutes). Ask Bob:
@@ -696,6 +715,53 @@ Wait for the job to complete (typically 2–3 minutes). Ask Bob:
 ```
 How is the enrichment job going?
 ```
+
+The job assigns data classes from profiling, but it can only assign **business terms that already exist** in the glossary, and a new glossary is empty. The next step generates and publishes them.
+
+#### Generate and publish business terms
+
+1. Ask Bob to create a glossary category for your terms:
+
+   ```
+   Create a glossary category named "Affiliate Junction".
+   ```
+
+2. Ask Bob to generate draft terms from your columns:
+
+   ```
+   Generate business terms for kafka_events in the "Affiliate Junction" category.
+   ```
+
+   Bob runs term generation, and an LLM drafts one term per column, such as *Publisher Identifier* and *Cookie Type*. These are **drafts**. They are not usable until a person publishes them.
+
+3. Add a business-level term of your own. The generated term "Kafka Events" comes from the table name, not from a column, so it describes the technology rather than the business concept. Ask Bob to create a better one:
+
+   ```
+   Create a business term "Affiliate Events" in the "Affiliate Junction" category with the description
+   "Impression and conversion events recorded for affiliate marketing campaigns".
+   ```
+
+   Like the generated terms, this is a **draft**.
+
+4. Publish the drafts through the governance workflow. Ask Bob:
+
+   ```
+   Show me the tasks in my workflow inbox.
+   ```
+
+   Then ask Bob to claim the task titled **Publish {artifactTypePlural}** and complete it. When Bob completes the task, a prompt asks **you** to choose approve or reject and to enter a comment. Bob does not make that decision for you.
+
+   > **Insight:** Generated terms are suggestions. A human review step decides what enters the glossary. Bob can drive the workflow, but the approval is yours.
+
+5. Ask Bob to re-run the enrichment job with the "Affiliate Junction" category included, so term assignment can match the published terms to your columns.
+
+6. Assign your table-level term to the table:
+
+   ```
+   Assign the business term "Affiliate Events" to kafka_events.
+   ```
+
+   The table can now be found by the business keywords "affiliate events", even though its technical name is `kafka_events`.
 
 ### 6.4 Inspect generated metadata via MCP
 
@@ -706,7 +772,7 @@ Show me the data quality score for kafka_events in my project
 ```
 
 ```
-What business terms and classifications were assigned to kafka_events?
+What business terms and classifications are assigned to each column of kafka_events?
 ```
 
 ```
@@ -716,11 +782,23 @@ in the data classes assigned to cookie_id and publisher_id
 
 Explore what the AI found:
 
-- **Data classes**: Did it correctly identify `event_id` as a UUID? Did it classify `cookie_id` appropriately?
+- **Data classes**: Did it correctly identify `event_id` as a UUID? Did it classify `cookie_id` appropriately? See the review step below.
 - **Business terms**: What terms were auto-assigned to columns like `advertiser_id`, `publisher_id`, `cohort`?
-- **Data quality**: Are there completeness issues (expected — many nullable fields are NULL for non-applicable event types)?
+- **Data quality**: Which columns scored lowest? Compare the scores with how sparse each column really is.
 
-> **Insight:** The fields like `impression_id` and `conversion_id` will show low completeness scores — this is correct behaviour. Each event type only populates its own fields. This is a good discussion point for real-world data modelling: wide sparse tables vs. event-type-specific tables.
+> **Insight:** A quality score only reflects the checks that were generated. In a test run of 4 000 rows, `cohort` (about 8% NULL) had a completeness check and scored 92, while `conversion_id` (about 86% NULL) and `conversion_timestamp`, `impression_timestamp` and `time_to_conversion_seconds` (about 94% NULL) had no completeness check and scored 100. The NULLs are correct behaviour: each event type only populates its own fields. A score of 100 therefore does not mean a column is fully populated. To see the real fill rate, ask Bob to run a query for the share of NULLs per column. This is also a good discussion point for real-world data modelling: wide sparse tables vs. event-type-specific tables.
+
+#### Review and correct the data classes
+
+Data classes come from profiling a **sample** of your rows (1 000 rows by default), not the whole table. Because the sample changes between runs, the same column can get a different class each time. In our test runs `event_type` flipped between *Organization Name*, *Indicator* and *Text*, and `time_to_conversion_seconds` between *Boolean* and *Indicator*. *Organization Name* is wrong for a column of event names, and *Boolean* is wrong for a duration in seconds.
+
+1. Ask Bob to list the data class assigned to each column of `kafka_events`, together with its confidence.
+2. Pick the columns where the class looks wrong. Low confidence is a good hint.
+3. Correct them in the watsonx.data Intelligence UI: open the `kafka_events` asset in your project, go to its column view and change the data class of each wrong column.
+4. Ask Bob the same question again to confirm your corrections are in place. Bob's answer marks a class you set by hand as set by the user.
+
+> **Insight:** AI-generated metadata is a starting point. Profiling samples the data, so it can be wrong or unstable, and a person has to review it before anyone relies on it.
+
 
 ✅ **Exercise 2 complete.** Your Iceberg table now has an automated metadata catalogue — business terms, data classes, and quality scores — without writing a single line of cataloguing code.
 
@@ -743,6 +821,12 @@ How many events of each type have I collected so far?
 ```
 Which publishers are generating the most impressions?
 ```
+
+```
+Group those impressions by cohort instead.
+```
+
+> **Note:** Each publisher has only a handful of impressions, so the ranking from the previous question says little. The `cohort` column holds each publisher's industry (TECH, TRAVEL, HEALTH, FINANCE or FASHION), and grouping by it gives a view you can actually compare. When an answer is too fine-grained to be useful, ask Bob to group by a broader column.
 
 ```
 What fraction of my events involve a fraud cookie?
@@ -773,7 +857,7 @@ SELECT
     cohort,
     ROUND(AVG(time_to_conversion_seconds), 1) AS avg_seconds,
     COUNT(*) AS conversions
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 WHERE event_type = 'conversion_identified'
   AND cohort IS NOT NULL
 GROUP BY cohort
@@ -806,7 +890,9 @@ Which publisher-advertiser pairs have zero conversion_identified events
 despite having many impressions? These might indicate attribution problems.
 ```
 
-> **Discussion:** The fraud patterns in the dataset are configurable in the producer. By default, 5% of impressions carry a fraud cookie, and 5 publishers are permanently assigned fraud cookies. Ask your instructor how these parameters map to real-world affiliate fraud scenarios.
+> **What to expect:** The first question may come back empty. That is a valid result: each cookie keeps a single type, so none appears as both `fraud` and `cohort`. For the second question, look for a small group of publishers where nearly all impressions carry a fraud cookie. For the third question, each publisher-advertiser pair has only a few impressions, so adjust the threshold for "many impressions" to match your data.
+>
+> **Discussion:** The fraud patterns in the dataset are configurable in the producer. By default, there are 5 fraud cookies, each permanently tied to one publisher, and about 5% of impressions carry a fraud cookie. Ask your instructor how these parameters map to real-world affiliate fraud scenarios.
 
 **Stretch goal — ingest more and re-query:**
 
@@ -862,6 +948,30 @@ Solution:
 
 ---
 
+**Problem: `ingest_to_iceberg` times out, or `distinct_events` is lower than `total`**
+
+Cause: The batch was too large for the tool-call timeout and the call was retried, so the same events were written twice.
+
+Solution: Delete the rows (`DELETE FROM demo_data.affiliate_junction_student1.kafka_events;`), then ask Bob to ingest again in batches of 1 000 or fewer, using a new `consumer_group_id` (for example `student1-load-02`). Always check the row count before retrying a call that timed out.
+
+---
+
+**Problem: `ingest_to_iceberg` fails with `Commit failed: Local: No offset stored` and the table stays empty**
+
+Cause: You used a new `consumer_group_id` together with a short `timeout_seconds`. The consumer did not receive any events before the timeout, so there was no offset to commit.
+
+Solution: Ask Bob to repeat the call with a `timeout_seconds` of 45 or more. Check the row count first to confirm nothing was written.
+
+---
+
+**Problem: A tool call fails with `401` or `The Token has expired`**
+
+Cause: The access token held by an MCP server has expired, usually after the session has been open for a while. The message can appear inside an otherwise normal response, for example as an error in an import result.
+
+Solution: Reload the affected MCP server in Bob's MCP settings, then ask Bob to repeat the step. Check what the failed call changed before repeating it. A call that failed with a 401 did not complete.
+
+---
+
 **Problem: `subscribe_and_ingest` returns 0 events**
 
 Cause: Your consumer group has already consumed all available messages.
@@ -869,7 +979,7 @@ Cause: Your consumer group has already consumed all available messages.
 Solution: Use a fresh `consumer_group_id` value — each unique group ID reads independently from the beginning of the topic:
 
 ```
-Call subscribe_and_ingest with consumer_group_id="student01-fresh-01"
+Call subscribe_and_ingest with consumer_group_id="student1-fresh-01"
 ```
 
 ---
@@ -880,8 +990,8 @@ Cause: Usually a SQL syntax error or a type mismatch.
 
 Solution:
 1. Check that your `WATSONX_DATA_TARGET_TABLE` in `.env` exactly matches the table you created (including your attendee ID).
-2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_student01`.
-3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_student01.kafka_events using presto44`.
+2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_student1`.
+3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_student1.kafka_events using presto44`.
 
 ---
 
@@ -968,13 +1078,13 @@ ingested_at                 timestamp  — when the row was written to Iceberg
 ```sql
 -- Event type distribution
 SELECT event_type, count(*) AS cnt
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 GROUP BY event_type ORDER BY cnt DESC;
 
 -- Fraud cookie volume
 SELECT cookie_type, count(*) AS cnt,
        ROUND(100.0 * count(*) / sum(count(*)) OVER (), 1) AS pct
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 WHERE event_type = 'impression'
 GROUP BY cookie_type;
 
@@ -982,13 +1092,13 @@ GROUP BY cookie_type;
 SELECT cohort,
        count(*) AS conversions,
        ROUND(AVG(time_to_conversion_seconds), 0) AS avg_seconds
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 WHERE event_type = 'conversion_identified'
 GROUP BY cohort ORDER BY avg_seconds;
 
 -- Top publishers by impression volume
 SELECT publisher_id, count(*) AS impressions
-FROM demo_data.affiliate_junction_student01.kafka_events
+FROM demo_data.affiliate_junction_student1.kafka_events
 WHERE event_type = 'impression'
 GROUP BY publisher_id ORDER BY impressions DESC LIMIT 10;
 ```
