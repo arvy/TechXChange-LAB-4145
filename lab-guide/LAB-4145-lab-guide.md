@@ -120,7 +120,7 @@ The lab is built around a five-stage pipeline:
 ┌─────────────────────────────────────────────────────────────┐
 │                    Confluent Platform                        │
 │         Topic: affiliate-junction-events                    │
-│   3 brokers · SASL_SSL · ~5 000 events/min                 │
+│   3 brokers · SASL_SSL · ~5 900 events (one batch)         │
 └───────────────────────┬─────────────────────────────────────┘
                         │ Kafka consumer
                         ▼
@@ -161,7 +161,7 @@ This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with wa
 
 | Resource | Details | Shared / Personal |
 |---|---|---|
-| Confluent Platform | 3 brokers at `163.66.90.46:9094–9096` · SASL_SSL | Shared — all attendees read the same topic |
+| Confluent Platform | 3 brokers (addresses on your credential sheet) · SASL_SSL | Shared — all attendees read the same topic |
 | watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
 | IBM Bob | AI coding assistant desktop app · license provided | Personal — installed on your laptop |
@@ -176,8 +176,8 @@ Your laptop
 IBM Bob (desktop application)
     │  MCP stdio transport
     ├──────────────────────────► MCP Ingestion Server (local process)
-    │                                │  SASL_SSL  port 9094/9095/9096
-    │                                └──────────► Confluent Platform (163.66.90.46)
+    │                                │  SASL_SSL
+    │                                └──────────► Confluent Platform
     │  MCP stdio transport
     ├──────────────────────────► watsonx.data MCP server
     │                                │  HTTPS  /lakehouse/api
@@ -205,8 +205,10 @@ Your lab instructor will provide a credential sheet with:
 | IBM Cloud login URL | Printed on your credential sheet |
 | IBM Cloud username & password | Printed on your credential sheet |
 | Kafka SASL password | Printed on your credential sheet |
+| Kafka broker addresses | Printed on your credential sheet |
+| watsonx.data instance CRN | Printed on your credential sheet |
 
-All other values (broker address, instance CRN, etc.) are the same for all attendees and are pre-filled in the steps below.
+The broker addresses and the instance CRN are the same for all attendees. The steps below show them as placeholders — replace each placeholder with the value from your credential sheet.
 
 #### Log in to IBM Cloud and generate your API key
 
@@ -235,8 +237,8 @@ IBM Bob is a desktop application. If you have not already installed it, download
 Once Bob is open, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
 
 ```bash
-git clone https://github.ibm.com/arvydas-jonusonis/agentic-ai-data-pipeline-workshop.git
-cd agentic-ai-data-pipeline-workshop
+git clone https://github.com/arvy/TechXChange-LAB-4145.git
+cd TechXChange-LAB-4145
 ```
 
 > **Already have Bob installed?** Skip the download — just open a new terminal and clone the repository.
@@ -279,10 +281,10 @@ The MCP ingestion server reads its credentials from `mcp_ingestion_server/.env`.
 cp mcp_ingestion_server/env-sample mcp_ingestion_server/.env
 ```
 
-Open `mcp_ingestion_server/.env` in Bob's editor and fill in the two values from your credential sheet:
+Open `mcp_ingestion_server/.env` in Bob's editor and replace each `<…>` placeholder with the value from your credential sheet:
 
 ```
-KAFKA_BOOTSTRAP_SERVERS=163.66.90.46:9094,163.66.90.46:9095,163.66.90.46:9096
+KAFKA_BOOTSTRAP_SERVERS=<broker addresses from your credential sheet, comma-separated>
 KAFKA_TOPIC=affiliate-junction-events
 KAFKA_SECURITY_PROTOCOL=SASL_SSL
 KAFKA_SASL_MECHANISM=PLAIN
@@ -292,14 +294,14 @@ KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
 WATSONX_DATA_API_KEY=<your IBM Cloud API key from TechZone>
-WATSONX_DATA_INSTANCE_ID=crn:v1:bluemix:public:lakehouse:ca-tor:a/13821c80b84a4240820821b6b40185c9:8afc678c-3e67-4589-ad0d-ee93c8346dc4::
+WATSONX_DATA_INSTANCE_ID=<watsonx.data instance CRN from your credential sheet>
 WATSONX_DATA_ENGINE_ID=presto44
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
 > **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student1`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
 
-> **Note:** The producer is already running centrally — you do not need to configure or start it.
+> **Note:** Your instructor has already published the events to the Kafka topic — you do not need to configure or start a producer.
 
 ---
 
@@ -424,7 +426,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "env": {
         "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
         "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from credential sheet>",
-        "WATSONX_DATA_INSTANCE_ID": "crn:v1:bluemix:public:lakehouse:ca-tor:a/13821c80b84a4240820821b6b40185c9:8afc678c-3e67-4589-ad0d-ee93c8346dc4::"
+        "WATSONX_DATA_INSTANCE_ID": "<watsonx.data instance CRN from credential sheet>"
       },
       "disabled": false
     },
@@ -914,9 +916,9 @@ Then re-run your analytical queries to see how the results change with more data
 
 If you did not complete all exercises during the session, you can continue in the **self-paced lab room** (check the TechXchange schedule for times and location).
 
-Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The Kafka topic will continue receiving events from the shared producer.
+Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The events stay in the Kafka topic, so you can load them again with a new `consumer_group_id`.
 
-To resume, simply re-open Bob on your laptop, navigate to the `agentic-ai-data-pipeline-workshop` folder, and continue — your `.env` files and virtualenv are still in place.
+To resume, simply re-open Bob on your laptop, navigate to the `TechXChange-LAB-4145` folder, and continue — your `.env` files and virtualenv are still in place.
 
 ---
 
@@ -1034,7 +1036,7 @@ This is safe to ignore — the `CREATE SCHEMA IF NOT EXISTS` and `CREATE TABLE I
 - **IBM TechXchange community:** community.ibm.com/techxchange
 - **watsonx.data documentation:** ibm.biz/wxdata-docs
 - **MCP SDK documentation:** modelcontextprotocol.io
-- **Lab repository:** github.ibm.com/arvydas-jonusonis/agentic-ai-data-pipeline-workshop
+- **Lab repository:** github.com/arvy/TechXChange-LAB-4145
 
 ---
 
