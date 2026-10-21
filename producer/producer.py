@@ -62,6 +62,17 @@ COHORT_DIFF_PROB       = float(os.getenv("AFFILIATE_JUNCTION_COHORT_DIFFERENT_PR
 FRAUD_CROSS_PROB       = float(os.getenv("AFFILIATE_JUNCTION_FRAUD_CROSS_CONTAMINATION_PROBABILITY", "0.05"))
 # Remaining probability (0.15) → random cookie
 
+# Longest delay (minutes) between an impression and its conversion, per cohort.
+# Delays are drawn uniformly up to this cap, so the cohort averages differ.
+# Cohorts not listed here use the full attribution window (HISTORY_MINS).
+COHORT_MAX_DELAY_MINS = {
+    "TECH":    10,   # quick, research-driven decisions
+    "FASHION": 25,
+    "HEALTH":  40,
+    "FINANCE": 60,
+    "TRAVEL":  90,   # long consideration before booking
+}
+
 SCHEMA_VERSION = "1.0"
 
 
@@ -170,17 +181,17 @@ def derive_cohort(cookie_id, publishers_data, publisher_id):
 # Event builders
 # ---------------------------------------------------------------------------
 
-def make_envelope(event_type, payload):
+def make_envelope(event_type, payload, ts=None):
     return {
         "event_id": str(uuid.uuid4()),
         "event_type": event_type,
-        "event_timestamp": datetime.now(UTC).isoformat(),
+        "event_timestamp": (ts or datetime.now(UTC)).isoformat(),
         "schema_version": SCHEMA_VERSION,
         "payload": payload,
     }
 
 
-def make_impression(publisher_id, advertiser_id, cookie_id, cookie_type, cohort):
+def make_impression(publisher_id, advertiser_id, cookie_id, cookie_type, cohort, ts=None):
     return make_envelope("impression", {
         "impression_id": str(uuid.uuid4()),
         "publisher_id":  publisher_id,
@@ -188,7 +199,7 @@ def make_impression(publisher_id, advertiser_id, cookie_id, cookie_type, cohort)
         "cookie_id":     cookie_id,
         "cookie_type":   cookie_type,
         "cohort":        cohort,
-    })
+    }, ts)
 
 
 def make_conversion(advertiser_id, publisher_id, cookie_id, cookie_type):
@@ -339,8 +350,13 @@ def run():
                 pub_id, publishers_data, fraud_cookies, cohort_cookies, random_cookies, all_cookies
             )
             cohort = derive_cohort(cookie_id, publishers_data, pub_id)
-            tracker.record(cookie_id, pub_id, now)
-            publish(producer, make_impression(pub_id, adv_id, cookie_id, cookie_type, cohort))
+            # Backdate each impression, with a cohort-specific maximum delay, so that
+            # conversions in the same cycle get a non-zero time_to_conversion that
+            # differs by cohort.
+            max_delay_mins = min(COHORT_MAX_DELAY_MINS.get(cohort, HISTORY_MINS), HISTORY_MINS)
+            impression_ts = now - timedelta(seconds=random.uniform(1, max_delay_mins * 60))
+            tracker.record(cookie_id, pub_id, impression_ts)
+            publish(producer, make_impression(pub_id, adv_id, cookie_id, cookie_type, cohort, impression_ts))
             impression_count += 1
 
         # --- Conversions (with attribution) ---

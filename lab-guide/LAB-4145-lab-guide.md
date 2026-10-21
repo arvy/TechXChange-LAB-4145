@@ -864,6 +864,8 @@ GROUP BY cohort
 ORDER BY avg_seconds ASC;
 ```
 
+> **What to expect:** The cohorts should show clearly different averages. In this dataset TECH converts fastest and TRAVEL slowest, with FASHION, HEALTH and FINANCE in between.
+
 Review the SQL Bob generates. You can ask it to explain or modify the query:
 
 ```
