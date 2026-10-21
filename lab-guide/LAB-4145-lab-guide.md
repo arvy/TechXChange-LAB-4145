@@ -413,7 +413,21 @@ It should contain:
 
 > **Note:** `${workspaceFolder}` is resolved automatically by Bob to the root of the open workspace — no manual path editing needed.
 
-#### Step 2 — Global config (watsonx.data + Intelligence servers)
+#### Step 2 — Get the patched Intelligence MCP server
+
+The published `ibm-watsonx-data-intelligence-mcp-server` package has a bug that you will hit in Exercise 2. Use the patched source from the lab's fork instead. Clone it into your home directory, on the fix branch, and install its dependencies:
+
+```bash
+cd ~
+git clone --branch fix/find-connection-id-personal-credentials https://github.com/arvy/data-intelligence-mcp-server.git
+cd data-intelligence-mcp-server
+uv sync
+pwd
+```
+
+Copy the path printed by `pwd` (for example `/home/student1/data-intelligence-mcp-server`). In the next step, replace `<absolute-path-to>/data-intelligence-mcp-server` with it.
+
+#### Step 3 — Global config (watsonx.data + Intelligence servers)
 
 Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below. If the file already exists, merge the `mcpServers` block — do not overwrite the whole file.
 
@@ -447,9 +461,9 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 }
 ```
 
-> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` uses a local patched clone (see section 6.1 Step 3 for setup instructions).
+> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2. Replace `<absolute-path-to>/data-intelligence-mcp-server` in both the `command` and `cwd` lines with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
 
-#### Step 3 — Reload Bob
+#### Step 4 — Reload Bob
 
 Reload Bob to pick up all three servers: open the command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
 
@@ -636,44 +650,11 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 4. Under **Credentials**, enter your IBM Cloud API key (from section 4.1).
 5. Name the connection `wx_presto_connect` and click **Create**.
 
-#### Step 3 — Check out the MCP server fix branch
+#### Step 3 — Confirm the patched Intelligence MCP server
 
-The published `ibm-watsonx-data-intelligence-mcp-server` package has a known bug where metadata imports cannot find connections that use personal credentials. A fix has been submitted upstream. In this step you will check out the patched source and point Bob at it.
+In section 5.3 you cloned the patched `data-intelligence-mcp-server` (the `fix/find-connection-id-personal-credentials` branch) and pointed the `wxdi-mcp-server` entry in `~/.bob/settings/mcp.json` at it. Nothing more to install here. If you skipped that step, go back to section 5.3 Steps 2 and 3 now, then reload Bob.
 
-Clone the repository and check out the fix branch:
-
-```bash
-git clone https://github.com/IBM/data-intelligence-mcp-server.git
-cd data-intelligence-mcp-server
-git remote add arvy https://github.com/arvy/data-intelligence-mcp-server.git
-git fetch arvy
-git checkout arvy/fix/find-connection-id-personal-credentials
-uv sync
-```
-
-> **What does this fix?** The bug is in `find_connection_id` in `app/services/tool_utils.py`. The function used the `GET /v2/connections?project_id=...` list endpoint, which hides connections flagged as `personal_credentials`. The fix replaces it with a global search query (`POST /v3/search`) that correctly surfaces personal connections to their owner.
-
-Now update your global Bob MCP config (`~/.bob/settings/mcp.json`) to use the local patched source instead of `uvx`. Replace the `wxdi-mcp-server` entry with:
-
-```json
-"wxdi-mcp-server": {
-  "command": "<absolute-path-to>/data-intelligence-mcp-server/.venv/bin/python",
-  "args": ["-m", "app.main", "--transport", "stdio"],
-  "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
-  "env": {
-    "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
-    "DI_APIKEY": "<your IBM Cloud API key>",
-    "DI_ENV_MODE": "SaaS",
-    "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
-  },
-  "disabled": false,
-  "alwaysAllow": []
-}
-```
-
-> **Important:** Replace `<absolute-path-to>` with the full path where you cloned the repo (e.g. `/home/student1/data-intelligence-mcp-server`). Also note the Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com` — not the default `api.dataplatform.cloud.ibm.com`.
-
-Reload Bob (`Ctrl+Shift+P` → **Developer: Reload Window**) to pick up the changes.
+> **Why the patched version?** The published `ibm-watsonx-data-intelligence-mcp-server` package has a bug where metadata imports cannot find connections that use personal credentials. The bug is in `find_connection_id` in `app/services/tool_utils.py`: it used the `GET /v2/connections?project_id=...` list endpoint, which hides connections flagged as `personal_credentials`. The fix replaces it with a global search query (`POST /v3/search`) that correctly surfaces personal connections to their owner.
 
 ### 6.2 Connect watsonx.data Intelligence to your table
 
