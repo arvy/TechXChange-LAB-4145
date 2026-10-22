@@ -543,48 +543,54 @@ Take a moment to explore the events Bob returned. Notice:
 
 ### 5.5 Land events into your Iceberg table
 
-Now ask Bob to do the full pipeline. Start with a clear, natural request:
+Now ask Bob to run the full pipeline: read events from Kafka and write them to your table. Load the whole topic in this step, because Exercise 3 looks at conversions and fraud patterns, and those event types are only a small share of the stream. A small load may contain none of them.
+
+Replace `<your-attendee-id>` with your own ID in the prompt, then send it:
 
 ```
-Ingest a batch of 50 affiliate junction events from Kafka into my Iceberg table.
+Ingest the affiliate junction events from Kafka into my Iceberg table in batches of 1000 events. Use a 45 second timeout and the consumer group <your-attendee-id>-load-01 for every call. Keep going until a call returns fewer than 1000 rows, which means there are no more events. Tell me the running total after each call.
 ```
 
-Bob will figure out which tool to call and with what parameters. While it runs (usually 20–40 seconds), you will see:
+The prompt sets three things on purpose:
 
-1. A Kafka consumer opens and polls 50 events
-2. An `INSERT INTO … VALUES` statement is generated with 50 rows
+- **A batch size of 1 000.** If you leave it out, Bob usually picks a small batch, such as 50, and the load takes many more calls. Batches much larger than 1 000 can exceed the tool-call timeout.
+- **The same consumer group for every call.** Kafka remembers how far each consumer group has read, so every call continues where the last one stopped. A different group starts again from the beginning of the topic and loads the same events a second time.
+- **A stop condition.** A call that returns fewer rows than the batch size means the topic is empty.
+
+Each call does the following, one after the other:
+
+1. A Kafka consumer opens and polls up to 1 000 events
+2. An `INSERT INTO … VALUES` statement is generated with those rows
 3. An IAM token is exchanged
 4. The INSERT is submitted to watsonx.data's Presto engine
 5. The tool polls until the job reaches `FINISHED`
 
-The response should be:
+A full call returns:
 
 ```json
 {
-  "rows_written": 50,
-  "kafka_count": 50,
+  "rows_written": 1000,
+  "kafka_count": 1000,
   "kafka_errors": [],
   "job_status": "completed",
   "target_table": "demo_data.affiliate_junction_student1.kafka_events"
 }
 ```
 
-Once that works, try an even more natural prompt that lets Bob choose sensible defaults entirely on its own:
+The last call returns fewer rows than that, and Bob should then stop and give you the total.
 
-```
-Grab some live events from the Kafka topic and write them to watsonx.data.
+> **If Bob seems to have stopped:** Bob may end a long loop early, or stop because it looks like it is repeating itself. Check its last message. If the final call still returned a full 1 000 rows, there are more events: tell Bob to continue with the same consumer group.
+
+#### If a call times out
+
+Do not simply retry. The first call may still be running, and a retry would load the same events twice. Check the row count first, in the watsonx.data Query workspace:
+
+```sql
+SELECT count(*) AS total, count(DISTINCT event_id) AS distinct_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;
 ```
 
-> **Ingest more data:** Ask Bob to *"keep pulling events from Kafka and writing them to my table"* — Bob will loop the calls until you stop it or the topic is exhausted. A call that returns fewer rows than the batch size means the topic is empty. Load the whole topic before moving to Exercise 2. Exercise 3 queries conversions and fraud patterns, and those event types are only a small share of the stream, so a small load may contain no fraud events at all.
->
-> **Keep each batch to 1 000 events or fewer** (for example: *"Ingest 1000 events at a time with a 45 second timeout, four times, and check the row count between calls."*). Very large batches can exceed the tool-call timeout. If a call times out, **do not simply retry** — the first call may still be running and a retry would load the same events twice. Check the row count first:
->
-> ```sql
-> SELECT count(*) AS total, count(DISTINCT event_id) AS distinct_events
-> FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;
-> ```
->
-> If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;` and reload using a fresh `consumer_group_id`.
+If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;` and reload with a fresh consumer group, for example `<your-attendee-id>-load-02`.
 
 ### 5.6 Verify the data in watsonx.data
 
