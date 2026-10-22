@@ -241,7 +241,15 @@ git clone https://github.com/arvy/TechXChange-LAB-4145.git
 cd TechXChange-LAB-4145
 ```
 
-> **Already have Bob installed?** Skip the download — just open a new terminal and clone the repository.
+Now open the cloned repository **as a folder** in Bob, so that the repository root becomes your workspace:
+
+1. In Bob, use the **File** menu to open a folder (**Open Folder…**; on some systems the entry is called **Open…**).
+2. Select the `TechXChange-LAB-4145` folder you just cloned (the folder that contains `pyproject.toml`, not a folder inside it or the folder above it), and confirm.
+3. If Bob asks whether you trust this folder, choose to trust it.
+
+> **Important:** Open the folder itself — do not open individual files from it. Bob loads the workspace MCP config (`.bob/mcp.json`) and resolves `${workspaceFolder}` from the open folder (see section 5.3), and the integrated terminal starts in it. Run all later commands in a terminal opened in this folder.
+
+> **Already have Bob installed?** Skip the download — just open a new terminal, clone the repository, and open it as a folder.
 
 ### 4.3 Install dependencies
 
@@ -260,17 +268,16 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv sync
 ```
 
-Copy the Confluent Platform CA certificate into the project root (pre-downloaded in your environment):
-
-```bash
-cp ~/kafka-ca.crt ./kafka-ca.crt
-```
+Get the Confluent Platform CA certificate, `kafka-ca.crt`, and save it in the project root, the same folder as `pyproject.toml`. Your credential sheet tells you where to download it, or your instructor can give you the file. Without it the connection to Kafka fails.
 
 Verify:
 
 ```bash
 uv run python --version
 # Python 3.11.x
+
+ls -la kafka-ca.crt
+# The file should be listed in the project root
 ```
 
 ### 4.4 Configure your environment files

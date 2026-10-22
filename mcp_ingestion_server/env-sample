@@ -1,17 +1,20 @@
 # ---------------------------------------------------------------------------
 # Confluent Platform / Kafka connection
-# (same broker settings as producer — copy from producer/env-sample)
+# Replace each <...> placeholder with the value from your credential sheet.
+# Keep SASL_SSL, PLAIN and the username as they are: with the wrong security
+# protocol the consumer connects but never receives messages.
 # ---------------------------------------------------------------------------
 
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+# Comma-separated list of all three broker addresses, each with its port
+KAFKA_BOOTSTRAP_SERVERS=<broker1:port>,<broker2:port>,<broker3:port>
 KAFKA_TOPIC=affiliate-junction-events
-KAFKA_SECURITY_PROTOCOL=PLAINTEXT
-KAFKA_SASL_MECHANISM=
-KAFKA_SASL_USERNAME=
-KAFKA_SASL_PASSWORD=
+KAFKA_SECURITY_PROTOCOL=SASL_SSL
+KAFKA_SASL_MECHANISM=PLAIN
+KAFKA_SASL_USERNAME=kafka-admin
+KAFKA_SASL_PASSWORD=<your Kafka SASL password>
 
-# Path to CA cert — required for TechZone Confluent Platform (relative to project root).
-# Download with: scp -i cflt-vsi-key.pem root@<vm-ip>:/var/lib/confluent-access/kafka-ca.crt kafka-ca.crt
+# Path to the Confluent Platform CA certificate (relative to the project root).
+# Your instructor provides this file; copy it into the project root.
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 # ---------------------------------------------------------------------------
