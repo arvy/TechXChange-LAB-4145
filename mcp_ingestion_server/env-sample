@@ -21,18 +21,18 @@ KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 # watsonx.data (Presto / Iceberg write)
 # ---------------------------------------------------------------------------
 
-# Base URL of the watsonx.data instance API (no trailing slash)
-# Format: https://<console-host>/lakehouse/api
-WATSONX_DATA_BASE_URL=
+# Base URL of the watsonx.data instance API (no trailing slash).
+# Same for everyone: leave as it is (Toronto region).
+WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
 
 # IBM Cloud API key — must have Manager role on the watsonx.data instance
-WATSONX_DATA_API_KEY=
+WATSONX_DATA_API_KEY=<your IBM Cloud API key>
 
-# Instance CRN — from IBM Cloud resource list
-WATSONX_DATA_INSTANCE_ID=
+# Instance CRN — from your credential sheet
+WATSONX_DATA_INSTANCE_ID=<watsonx.data instance CRN>
 
-# Presto engine ID to use for INSERT jobs (from list_engines)
-WATSONX_DATA_ENGINE_ID=presto44
+# Presto engine ID to use for INSERT jobs — from your credential sheet
+WATSONX_DATA_ENGINE_ID=<Presto engine ID>
 
 # Target Iceberg table for ingestion
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction.kafka_events

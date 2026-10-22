@@ -207,8 +207,9 @@ Your lab instructor will provide a credential sheet with:
 | Kafka SASL password | Printed on your credential sheet |
 | Kafka broker addresses | Printed on your credential sheet |
 | watsonx.data instance CRN | Printed on your credential sheet |
+| watsonx.data Presto engine ID | Printed on your credential sheet |
 
-The broker addresses and the instance CRN are the same for all attendees. The steps below show them as placeholders — replace each placeholder with the value from your credential sheet.
+The broker addresses, the instance CRN and the engine ID are the same for all attendees. The steps below show them as placeholders — replace each placeholder with the value from your credential sheet.
 
 #### Log in to IBM Cloud and generate your API key
 
@@ -302,7 +303,7 @@ KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
 WATSONX_DATA_API_KEY=<your IBM Cloud API key from TechZone>
 WATSONX_DATA_INSTANCE_ID=<watsonx.data instance CRN from your credential sheet>
-WATSONX_DATA_ENGINE_ID=presto44
+WATSONX_DATA_ENGINE_ID=<Presto engine ID from your credential sheet>
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
@@ -324,19 +325,43 @@ In this exercise you will:
 
 ### 5.1 Create your personal Iceberg table
 
-Open the [watsonx.data console](https://console-ibm-cator.lakehouse.saas.ibm.com) and navigate to **Query Workspace**.
+Open the watsonx.data console through IBM Cloud:
 
-Run the following SQL, replacing `<your-attendee-id>` with your assigned ID:
+1. Sign in to IBM Cloud with the student username and password from your credential sheet (the same login you used in section 4.1).
+2. In the left menu bar, click **Resource list** (the icon that looks like a bulleted list).
+3. Scroll down to the **Databases** category and click the **watsonx.data** link.
+4. Click **Open console**.
+5. In the watsonx.data console, navigate to **Query Workspace**.
 
-```sql
--- Step 1: Create your personal schema
-CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_student1
-WITH (location = 's3a://watsonx-data-76a38762-ab88-4c5a-91d7-9b32184e20c5/affiliate_junction_student1');
+You need the name of the Cloud Object Storage (COS) bucket that holds the `demo_data` catalog. Look it up first:
+
+1. In the watsonx.data console, open **Infrastructure manager**.
+2. Click the COS bucket that is attached to the `demo_data` catalog.
+3. Copy the bucket name.
+
+Now generate your SQL. Every attendee has their own schema, so the statements must contain your own attendee ID. A script fills it in for you, which avoids typing another attendee's ID by mistake. In a terminal in the project folder, run:
+
+```bash
+uv run python schema/generate_sql.py
 ```
 
+The script asks two questions:
+
+1. **Your attendee ID** (for example `student1`), as printed on your credential sheet.
+2. **The COS bucket name** you just copied.
+
+It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it prints three statements with your values filled in:
+
+1. **Create your personal schema**, `affiliate_junction_<your attendee ID>`, stored in the COS bucket.
+2. **Create the `kafka_events` landing table** in that schema.
+3. **Verify** that the table exists, with a `SELECT` that should return no rows.
+
+Copy everything the script printed, paste it into **Query workspace**, and run the statements one at a time, in order.
+
+**For reference:** this is the table definition the script generates. Do not copy it from here. It still contains the `<your-attendee-id>` placeholder, and the script fills that in for you.
+
 ```sql
--- Step 2: Create the landing table
-CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student1.kafka_events (
+CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_<your-attendee-id>.kafka_events (
     event_id                    varchar,
     event_type                  varchar,
     event_timestamp             timestamp,
@@ -358,13 +383,7 @@ CREATE TABLE IF NOT EXISTS demo_data.affiliate_junction_student1.kafka_events (
 );
 ```
 
-```sql
--- Step 3: Verify
-SELECT * FROM demo_data.affiliate_junction_student1.kafka_events LIMIT 5;
--- Should return: (no rows) — table is empty for now
-```
-
-> **Tip:** The DDL file is also available at `schema/kafka_events.sql` in the repository. The partitioning by `day(event_timestamp)` and `event_type` ensures efficient queries when filtering by time or event type.
+> **Tip:** The generated SQL comes from `schema/kafka_events.sql` in the repository. The partitioning by `day(event_timestamp)` and `event_type` ensures efficient queries when filtering by time or event type.
 
 ### 5.2 Explore the MCP ingestion server
 
@@ -562,25 +581,25 @@ Grab some live events from the Kafka topic and write them to watsonx.data.
 >
 > ```sql
 > SELECT count(*) AS total, count(DISTINCT event_id) AS distinct_events
-> FROM demo_data.affiliate_junction_student1.kafka_events;
+> FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;
 > ```
 >
-> If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE FROM demo_data.affiliate_junction_student1.kafka_events;` and reload using a fresh `consumer_group_id`.
+> If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;` and reload using a fresh `consumer_group_id`.
 
 ### 5.6 Verify the data in watsonx.data
 
-Go back to the watsonx.data **Query Workspace** and run:
+Go back to the watsonx.data **Query Workspace** and run the following queries. Replace `<your-attendee-id>` with your own ID in each one first:
 
 ```sql
 -- How many rows landed?
 SELECT count(*) AS row_count
-FROM demo_data.affiliate_junction_student1.kafka_events;
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;
 ```
 
 ```sql
 -- What event types do we have?
 SELECT event_type, count(*) AS cnt
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 GROUP BY event_type
 ORDER BY cnt DESC;
 ```
@@ -588,7 +607,7 @@ ORDER BY cnt DESC;
 ```sql
 -- Show 5 sample rows
 SELECT event_id, event_type, publisher_id, cookie_type, cohort, ingested_at
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 LIMIT 5;
 ```
 
@@ -684,7 +703,7 @@ Bob will:
 2. Call `run_metadata_import` to execute it
 3. Poll until the job completes and return the result
 
-> **Watch for an empty import.** The import scope must include the catalog name: `/<catalog>/<schema>/<table>`, for example `/demo_data/affiliate_junction_student0/kafka_events`. Bob cannot reliably discover this path, because the path-listing tool returns nothing for this connection, so it may leave out the catalog. An import with the wrong scope still reports success, but it finds **0 assets**. Check that the result shows 1 imported asset. If it shows 0, tell Bob the full scope above and ask it to update the import and run it again.
+> **Watch for an empty import.** The import scope must include the catalog name: `/<catalog>/<schema>/<table>`, for example `/demo_data/affiliate_junction_<your-attendee-id>/kafka_events`. Bob cannot reliably discover this path, because the path-listing tool returns nothing for this connection, so it may leave out the catalog. An import with the wrong scope still reports success, but it finds **0 assets**. Check that the result shows 1 imported asset. If it shows 0, tell Bob the full scope above and ask it to update the import and run it again.
 
 ### 6.3 Run metadata enrichment
 
@@ -847,7 +866,7 @@ SELECT
     cohort,
     ROUND(AVG(time_to_conversion_seconds), 1) AS avg_seconds,
     COUNT(*) AS conversions
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 WHERE event_type = 'conversion_identified'
   AND cohort IS NOT NULL
 GROUP BY cohort
@@ -944,7 +963,7 @@ Solution:
 
 Cause: The batch was too large for the tool-call timeout and the call was retried, so the same events were written twice.
 
-Solution: Delete the rows (`DELETE FROM demo_data.affiliate_junction_student1.kafka_events;`), then ask Bob to ingest again in batches of 1 000 or fewer, using a new `consumer_group_id` (for example `student1-load-02`). Always check the row count before retrying a call that timed out.
+Solution: Delete the rows (`DELETE FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events;`), then ask Bob to ingest again in batches of 1 000 or fewer, using a new `consumer_group_id` (for example `student1-load-02`). Always check the row count before retrying a call that timed out.
 
 ---
 
@@ -982,8 +1001,8 @@ Cause: Usually a SQL syntax error or a type mismatch.
 
 Solution:
 1. Check that your `WATSONX_DATA_TARGET_TABLE` in `.env` exactly matches the table you created (including your attendee ID).
-2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_student1`.
-3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_student1.kafka_events using presto44`.
+2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_<your-attendee-id>`.
+3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events using presto44`.
 
 ---
 
@@ -1016,6 +1035,17 @@ Solution: Ask your instructor for a fresh API key. Update `WATSONX_DATA_API_KEY`
 **Problem: Schema already exists error when running DDL**
 
 This is safe to ignore — the `CREATE SCHEMA IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` statements are idempotent.
+
+---
+
+**Problem: `uv run python schema/generate_sql.py` fails**
+
+Cause: `uv` is not installed or not on your path, or the terminal is not in the project folder.
+
+Solution:
+1. If you see `uv: command not found`, install `uv` as described in section 4.3, then open a new terminal.
+2. If you see `No such file or directory`, your terminal is in the wrong folder. Change to the project folder, the one that contains `pyproject.toml`, and run the command again.
+3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the bucket name in **every** place they appear, then paste the statements into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
 
 ---
 
@@ -1067,16 +1097,18 @@ ingested_at                 timestamp  — when the row was written to Iceberg
 
 ### Useful SQL snippets
 
+Replace `<your-attendee-id>` with your own ID in each query before you run it.
+
 ```sql
 -- Event type distribution
 SELECT event_type, count(*) AS cnt
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 GROUP BY event_type ORDER BY cnt DESC;
 
 -- Fraud cookie volume
 SELECT cookie_type, count(*) AS cnt,
        ROUND(100.0 * count(*) / sum(count(*)) OVER (), 1) AS pct
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 WHERE event_type = 'impression'
 GROUP BY cookie_type;
 
@@ -1084,13 +1116,13 @@ GROUP BY cookie_type;
 SELECT cohort,
        count(*) AS conversions,
        ROUND(AVG(time_to_conversion_seconds), 0) AS avg_seconds
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 WHERE event_type = 'conversion_identified'
 GROUP BY cohort ORDER BY avg_seconds;
 
 -- Top publishers by impression volume
 SELECT publisher_id, count(*) AS impressions
-FROM demo_data.affiliate_junction_student1.kafka_events
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 WHERE event_type = 'impression'
 GROUP BY publisher_id ORDER BY impressions DESC LIMIT 10;
 ```

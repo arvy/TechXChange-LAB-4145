@@ -3,13 +3,13 @@
 -- Run these statements in the watsonx.data Query Workspace (Presto engine)
 -- =============================================================================
 
--- Step 1: Create your personal schema.
--- Replace <your-attendee-id> with the ID assigned to you at lab start
--- (e.g. student0, student1, … student33)
--- This namespaces your tables so attendees don't overwrite each other.
+-- Step 1: Create your personal schema (namespaces your tables per attendee).
+-- Replace <your-attendee-id> with your assigned ID (e.g. student1).
+-- Replace <cos-bucket-name> with the COS bucket name (Infrastructure manager).
+-- Or fill both in for you: uv run python schema/generate_sql.py
 
 CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_<your-attendee-id>
-WITH (location = 's3a://watsonx-data-76a38762-ab88-4c5a-91d7-9b32184e20c5/affiliate_junction_<your-attendee-id>/');
+WITH (location = 's3a://<cos-bucket-name>/affiliate_junction_<your-attendee-id>/');
 
 
 -- Step 2: Create the kafka_events landing table.
