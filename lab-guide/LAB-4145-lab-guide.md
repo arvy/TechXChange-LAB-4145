@@ -693,7 +693,7 @@ In section 5.3 you cloned the patched `data-intelligence-mcp-server` (the `fix/f
 
 ### 6.2 Connect watsonx.data Intelligence to your table
 
-Start a new Bob task for this exercise. The ingestion work from Exercise 1 is no longer needed, and a fresh task keeps Bob focused on the Intelligence tools instead of the earlier Kafka conversation.
+Start a new Bob task for this exercise by clicking the **+** (plus) icon in the Bob panel. The ingestion work from Exercise 1 is no longer needed, and a fresh task keeps Bob focused on the Intelligence tools instead of the earlier Kafka conversation.
 
 Bob now has access to the patched watsonx.data Intelligence MCP server, `wxdi-mcp-server`. Bob also has the watsonx.data server (`watsonxdata`), which can query tables, and a vague prompt about a "table" can send Bob there instead. So the prompts below name the server. Replace `<your-attendee-id>` with your own ID, then ask Bob to import your table into the Intelligence catalogue:
 
