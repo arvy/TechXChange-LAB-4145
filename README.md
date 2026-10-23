@@ -50,7 +50,7 @@ Confluent Platform (Kafka)
 | **1 — Ingest** | ~25 min | MCP server that subscribes to the Kafka topic and lands events into your Iceberg table |
 | **2 — Govern** | ~25 min | Connect watsonx.data Intelligence to your table; inspect auto-generated metadata |
 | **3 — Query** | ~25 min | Wire up a natural language query interface via MCP backed by Presto |
-| **Buffer** | ~15 min | Q&A, troubleshooting, stretch goals |
+| **Buffer** | ~15 min | Q&A, troubleshooting |
 
 ---
 

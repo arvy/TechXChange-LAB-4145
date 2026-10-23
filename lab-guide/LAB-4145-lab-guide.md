@@ -106,7 +106,7 @@ This lab teaches you to:
 | Exercise 1 — Ingest | ~25 min | Live Kafka events landing in your Iceberg table |
 | Exercise 2 — Govern | ~25 min | Automated metadata catalogue populated |
 | Exercise 3 — Query | ~25 min | Natural language queries running against your data |
-| Buffer | ~5 min | Q&A and stretch goals |
+| Buffer | ~5 min | Q&A |
 
 ---
 
@@ -164,7 +164,7 @@ This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with wa
 | Confluent Platform | 3 brokers (addresses on your credential sheet) · SASL_SSL | Shared — all attendees read the same topic |
 | watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
-| IBM Bob | AI coding assistant desktop app · license provided | Personal — installed on your laptop |
+| IBM Bob | AI coding assistant desktop app · Trial version | Personal — installed on your laptop |
 | Lab compute | Your laptop | Personal |
 
 ### 3.3 Lab environment connectivity
@@ -201,7 +201,6 @@ Your lab instructor will provide a credential sheet with:
 | Item | Where to find it |
 |---|---|
 | `ATTENDEE_ID` | e.g. `student1` — assigned at lab start |
-| IBM Bob licence key | Printed on your credential sheet |
 | IBM Cloud login URL | Printed on your credential sheet |
 | IBM Cloud username & password | Printed on your credential sheet |
 | Kafka SASL password | Printed on your credential sheet |
@@ -229,11 +228,10 @@ You will use this API key in section 4.4 when configuring your `.env` file and i
 
 ### 4.2 Install IBM Bob and open the lab repository
 
-IBM Bob is a desktop application. If you have not already installed it, download it now:
+IBM Bob is a desktop application. This lab uses the Bob Trial version, so you don't need a licence key. If you have not already installed it, download it now:
 
 1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
 2. Run the installer and follow the prompts.
-3. When prompted, enter the licence key from your credential sheet.
 
 Once Bob is open, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
 
@@ -948,16 +946,6 @@ despite having many impressions? These might indicate attribution problems.
 > **What to expect:** The first question may come back empty. That is a valid result: each cookie keeps a single type, so none appears as both `fraud` and `cohort`. For the second question, look for a small group of publishers where nearly all impressions carry a fraud cookie. For the third question, each publisher-advertiser pair has only a few impressions, so adjust the threshold for "many impressions" to match your data.
 >
 > **Discussion:** The fraud patterns in the dataset are configurable in the producer. By default, there are 5 fraud cookies, each permanently tied to one publisher, and about 5% of impressions carry a fraud cookie. Ask your instructor how these parameters map to real-world affiliate fraud scenarios.
-
-**Stretch goal — ingest more and re-query:**
-
-If you finish early, ask Bob to load more data:
-
-```
-Pull in 500 more affiliate junction events from Kafka.
-```
-
-Then re-run your analytical queries to see how the results change with more data volume.
 
 ✅ **Exercise 3 complete.** You have queried a live Iceberg table using natural language, with Bob translating your questions into Presto SQL via MCP — no SQL knowledge required.
 
