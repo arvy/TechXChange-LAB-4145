@@ -641,8 +641,8 @@ Before Bob can run metadata imports, you need to complete three one-time setup s
 
 #### Step 1 — Create your project in watsonx.data Intelligence
 
-1. Open [cloud.ibm.com/authorize/e13cdedaed9949e9ac5fab1bfd2eeefb/1zRGU7wWWH](https://cloud.ibm.com/authorize/e13cdedaed9949e9ac5fab1bfd2eeefb/1zRGU7wWWH) and sign in with your TechZone credentials. This link logs you directly into the correct IBM Cloud account.
-2. Once logged in, click **Resource list** in the left navigation.
+1. Open the IBM Cloud login URL from your credential sheet and sign in if prompted. You should still be logged in from section 5.1.
+2. Click **Resource list** in the left navigation.
 3. Under the **AI / Machine Learning** category, find and click your **watsonx.data Intelligence** instance. This opens the watsonx.data Intelligence portal.
 4. Click **Projects** in the left navigation, then **New project**.
 5. Name it `Affiliate Junction - student1` (replace `student1` with your attendee ID) and click **Create**.
@@ -655,7 +655,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 **Get the connection JSON:**
 
-1. Open the [watsonx.data console](https://console-ibm-cator.lakehouse.saas.ibm.com).
+1. Open the watsonx.data console, the same way as in section 5.1 (IBM Cloud **Resource list** → **Databases** → **watsonx.data** → **Open console**).
 2. Go to **Infrastructure Manager** → click your **Starter** Presto engine → **Details**.
 3. Click **Connect information** and copy the JSON from the **Connection details** field. It looks like:
 
@@ -676,11 +676,14 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 **Create the connection in Intelligence:**
 
-1. In your **Affiliate Junction - student1** project, click **Assets** → **New asset** → **Data access tools** → **Connection**.
-2. Search for and select **IBM watsonx.data Presto**.
-3. Click **Import connection values** and paste the JSON you copied above — the fields will auto-populate.
-4. Under **Credentials**, enter your IBM Cloud API key (from section 4.1).
-5. Name the connection `wx_presto_connect` and click **Create**.
+1. In your **Affiliate Junction - student1** project, click **Assets** → **New asset** → **Connect to data source**.
+2. Search for **IBM watsonx.data Presto** and select it. Do not choose the plain **Presto** connector: it is a different data source and will not work here.
+3. Click **Enter JSON snippet** and paste the JSON you copied above — the fields will auto-populate.
+4. Check that **SSL** is enabled.
+5. Set the credential type to **Personal** (not **Shared**).
+6. Under the general credentials, enter your IBM Cloud API key (from section 4.1), then click **Apply**.
+7. Click **Test connection** and wait for it to report success. If it fails, re-check the pasted JSON, that SSL is enabled, and the API key.
+8. Name the connection `wx_presto_connect` and click **Create**.
 
 #### Step 3 — Confirm the patched Intelligence MCP server
 
@@ -690,18 +693,12 @@ In section 5.3 you cloned the patched `data-intelligence-mcp-server` (the `fix/f
 
 ### 6.2 Connect watsonx.data Intelligence to your table
 
-Bob now has access to the patched watsonx.data Intelligence MCP server. Ask Bob to find your asset:
+Start a new Bob task for this exercise. The ingestion work from Exercise 1 is no longer needed, and a fresh task keeps Bob focused on the Intelligence tools instead of the earlier Kafka conversation.
+
+Bob now has access to the patched watsonx.data Intelligence MCP server, `wxdi-mcp-server`. Bob also has the watsonx.data server (`watsonxdata`), which can query tables, and a vague prompt about a "table" can send Bob there instead. So the prompts below name the server. Replace `<your-attendee-id>` with your own ID, then ask Bob to import your table into the Intelligence catalogue:
 
 ```
-Find my kafka_events table in watsonx.data Intelligence.
-```
-
-Bob will call the Intelligence MCP server's search tool and return the asset details.
-
-If it is not yet catalogued, ask Bob to import it:
-
-```
-Import my kafka_events table from watsonx.data into the Intelligence catalogue.
+Using the wxdi-mcp-server, import my kafka_events table from the wx_presto_connect connection into my "Affiliate Junction - <your-attendee-id>" project.
 ```
 
 Bob will:
@@ -709,7 +706,17 @@ Bob will:
 2. Call `run_metadata_import` to execute it
 3. Poll until the job completes and return the result
 
+> **If Bob uses the wrong server:** If Bob runs SQL, or calls tools such as `execute_select` or `list_tables`, it is using the watsonx.data server. Stop it and say: *"Use only the wxdi-mcp-server tools, not the watsonxdata ones."* Then ask again. The same applies to later steps in this exercise.
+
 > **Watch for an empty import.** The import scope must include the catalog name: `/<catalog>/<schema>/<table>`, for example `/demo_data/affiliate_junction_<your-attendee-id>/kafka_events`. Bob cannot reliably discover this path, because the path-listing tool returns nothing for this connection, so it may leave out the catalog. An import with the wrong scope still reports success, but it finds **0 assets**. Check that the result shows 1 imported asset. If it shows 0, tell Bob the full scope above and ask it to update the import and run it again.
+
+Once the import reports 1 asset, check that the table is in the catalogue:
+
+```
+Using the wxdi-mcp-server, list the data assets in my "Affiliate Junction - <your-attendee-id>" project.
+```
+
+You should see `kafka_events` in the list.
 
 ### 6.3 Run metadata enrichment
 
@@ -768,7 +775,13 @@ The job assigns data classes from profiling, but it can only assign **business t
 
    > **Insight:** Generated terms are suggestions. A human review step decides what enters the glossary. Bob can drive the workflow, but the approval is yours.
 
-5. Ask Bob to re-run the enrichment job with the "Affiliate Junction" category included, so term assignment can match the published terms to your columns.
+5. Ask Bob to re-run the enrichment job so term assignment can match the published terms to your columns. Ask for both quality steps by name. A re-run can silently switch objectives off. If it drops either quality step, section 6.4 shows scores of 100 for every column:
+
+   ```
+   Re-run the enrichment job for kafka_events with the "Affiliate Junction" category. Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
+   ```
+
+   Ask Bob to confirm which objectives the job ran with. You should see `profile`, `assign_terms`, `dq_gen_constraints` and `analyze_quality`.
 
 6. Assign your table-level term to the table:
 
@@ -797,22 +810,24 @@ in the data classes assigned to cookie_id and publisher_id
 
 Explore what the AI found:
 
-- **Data classes**: Did it correctly identify `event_id` as a UUID? Did it classify `cookie_id` appropriately? See the review step below.
+- **Data classes**: Which columns got a data class and which got none? Do the ID columns (`event_id`, `cookie_id`, `publisher_id`) get a class that describes them well? See the review step below.
 - **Business terms**: What terms were auto-assigned to columns like `advertiser_id`, `publisher_id`, `cohort`?
-- **Data quality**: Which columns scored lowest? Compare the scores with how sparse each column really is.
+- **Data quality**: Which columns scored lowest? Ask Bob which check failed for each one, then decide whether the flagged values are really bad.
 
-> **Insight:** A quality score only reflects the checks that were generated. In a test run of 4 000 rows, `cohort` (about 8% NULL) had a completeness check and scored 92, while `conversion_id` (about 86% NULL) and `conversion_timestamp`, `impression_timestamp` and `time_to_conversion_seconds` (about 94% NULL) had no completeness check and scored 100. The NULLs are correct behaviour: each event type only populates its own fields. A score of 100 therefore does not mean a column is fully populated. To see the real fill rate, ask Bob to run a query for the share of NULLs per column. This is also a good discussion point for real-world data modelling: wide sparse tables vs. event-type-specific tables.
+> **Insight:** A quality score only reflects the checks that were generated. Columns with no checks score 100, so a score of 100 does not mean a column is clean or fully populated. Each event type only populates its own fields, so columns such as `conversion_id`, `conversion_timestamp`, `impression_timestamp` and `time_to_conversion_seconds` are mostly NULL by design. To see the real fill rate, ask Bob to run a query for the share of NULLs per column. This is also a good discussion point for real-world data modelling: wide sparse tables vs. event-type-specific tables.
+
+> **Insight:** A low score is not always bad data. Checks are generated from a sample of values, so a format check built from a few examples can flag perfectly valid values of a different length or shape. Look at the values behind a failing check before you act on the score.
 
 #### Review and correct the data classes
 
-Data classes come from profiling a **sample** of your rows (1 000 rows by default), not the whole table. Because the sample changes between runs, the same column can get a different class each time. In our test runs `event_type` flipped between *Organization Name*, *Indicator* and *Text*, and `time_to_conversion_seconds` between *Boolean* and *Indicator*. *Organization Name* is wrong for a column of event names, and *Boolean* is wrong for a duration in seconds.
+Data classes come from profiling a **sample** of your rows (the first 1 000 by default), not the whole table. Profiling only recognises formats it already knows. It gives a column a class when the values match one, and it leaves the column with no class when they don't. Your IDs use a custom format, so expect some of them to get a generic class such as *Text* or *Code*, or no class at all. A column whose sampled rows are mostly NULL can also end up with no class. A person has to supply a class that profiling can't infer.
 
 1. Ask Bob to list the data class assigned to each column of `kafka_events`, together with its confidence.
-2. Pick the columns where the class looks wrong. Low confidence is a good hint.
+2. Pick the columns where the class is missing or looks wrong. Low confidence is a good hint.
 3. Correct them in the watsonx.data Intelligence UI: open the `kafka_events` asset in your project, go to its column view and change the data class of each wrong column.
 4. Ask Bob the same question again to confirm your corrections are in place. Bob's answer marks a class you set by hand as set by the user.
 
-> **Insight:** AI-generated metadata is a starting point. Profiling samples the data, so it can be wrong or unstable, and a person has to review it before anyone relies on it.
+> **Insight:** AI-generated metadata is a starting point. Profiling samples the data, so it can be wrong, unstable or silent, and a person has to review it before anyone relies on it.
 
 
 ✅ **Exercise 2 complete.** Your Iceberg table now has an automated metadata catalogue — business terms, data classes, and quality scores — without writing a single line of cataloguing code.
