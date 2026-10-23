@@ -866,18 +866,10 @@ Bob will translate each question into Presto SQL, execute it via the MCP server,
 
 ### 7.2 Run analytical queries via the watsonx.data MCP server
 
-Try deeper questions:
+Try deeper questions. Start with conversion time:
 
 ```
 On average, how long does it take for each publisher cohort to convert after seeing an ad?
-```
-
-```
-Which cookie types are most likely to lead to a conversion?
-```
-
-```
-Who are my top 10 advertisers by attributed conversions?
 ```
 
 Bob will generate and execute SQL similar to:
@@ -896,7 +888,38 @@ ORDER BY avg_seconds ASC;
 
 > **What to expect:** The cohorts should show clearly different averages. In this dataset TECH converts fastest and TRAVEL slowest, with FASHION, HEALTH and FINANCE in between.
 
-Review the SQL Bob generates. You can ask it to explain or modify the query:
+Now ask which cookie types lead to conversions:
+
+```
+Which cookie types are most likely to lead to a conversion?
+```
+
+Then rank advertisers. Only `conversion_identified` events carry an attributed conversion, so this question groups by `advertiser_id`, not by cohort:
+
+```
+Who are my top 10 advertisers by attributed conversions?
+```
+
+Bob will generate and execute SQL similar to:
+
+```sql
+SELECT
+    advertiser_id,
+    COUNT(*) AS attributed_conversions
+FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events
+WHERE event_type = 'conversion_identified'
+GROUP BY advertiser_id
+ORDER BY attributed_conversions DESC
+LIMIT 10;
+```
+
+Bob runs each query through the `execute_select` tool, so the chat may show only the result and not the SQL. To see the query, expand the tool call in the chat, or ask:
+
+```
+Show me the exact SQL you ran for that.
+```
+
+Check that each query groups by the right column. If it doesn't, say so and ask Bob to correct it. You can also ask Bob to explain or modify a query:
 
 ```
 Can you add a filter to only include conversions that happened
