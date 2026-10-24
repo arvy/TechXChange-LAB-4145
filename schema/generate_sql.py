@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 TEMPLATE = Path(__file__).with_name("kafka_events.sql")
+OUTPUT = Path(__file__).with_name("my_kafka_events.sql")
 
 ID_PLACEHOLDER = "<your-attendee-id>"
 BUCKET_PLACEHOLDER = "<cos-bucket-name>"
@@ -84,10 +85,16 @@ def main() -> None:
     sql = "\n".join(lines).replace(ID_PLACEHOLDER, attendee_id)
     sql = sql.replace(BUCKET_PLACEHOLDER, bucket)
 
+    OUTPUT.write_text(sql + "\n", encoding="utf-8")
+
     print("\n" + "=" * 70)
     print("Copy everything below into the watsonx.data Query workspace.")
     print("=" * 70 + "\n")
     print(sql)
+    print("\n" + "=" * 70)
+    print("The same SQL is saved in: schema/my_kafka_events.sql")
+    print("Open that file in Bob's editor to copy it without scrolling.")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

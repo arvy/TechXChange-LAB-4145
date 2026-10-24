@@ -262,6 +262,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+> **Windows:** After installing `uv`, close Bob completely and open it again, then reopen the `TechXChange-LAB-4145` folder. A terminal that was already open does not see the new `uv` command, and neither do the MCP servers that Bob starts.
+
 ```bash
 # Install all Python dependencies into a local virtualenv
 uv sync
@@ -275,7 +277,7 @@ Verify:
 uv run python --version
 # Python 3.11.x
 
-ls -la kafka-ca.crt
+ls kafka-ca.crt
 # The file should be listed in the project root
 ```
 
@@ -348,13 +350,13 @@ The script asks two questions:
 1. **Your attendee ID** (for example `student1`), as printed on your credential sheet.
 2. **The COS bucket name** you just copied.
 
-It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it prints three statements with your values filled in:
+It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it prints three statements with your values filled in, and saves the same text to `schema/my_kafka_events.sql`:
 
 1. **Create your personal schema**, `affiliate_junction_<your attendee ID>`, stored in the COS bucket.
 2. **Create the `kafka_events` landing table** in that schema.
 3. **Verify** that the table exists, with a `SELECT` that should return no rows.
 
-Copy everything the script printed, paste it into **Query workspace**, and run the statements one at a time, in order.
+The terminal window may be too short to show all of the output, and the schema statement comes first. Instead of copying from the terminal, open `schema/my_kafka_events.sql` in Bob's editor and copy the statements from there. Paste them into **Query workspace** and run them one at a time, in order. Check that you have all three: `CREATE SCHEMA`, `CREATE TABLE` and `SELECT`.
 
 **For reference:** this is the table definition the script generates. Do not copy it from here. It still contains the `<your-attendee-id>` placeholder, and the script fills that in for you.
 
@@ -426,8 +428,8 @@ It should contain:
 {
   "mcpServers": {
     "affiliate-junction-ingestion": {
-      "command": ".venv/bin/python",
-      "args": ["-m", "mcp_ingestion_server.server"],
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp_ingestion_server.server"],
       "cwd": "${workspaceFolder}",
       "alwaysAllow": ["subscribe_and_ingest"]
     }
@@ -451,6 +453,8 @@ pwd
 
 Copy the path printed by `pwd` (for example `/home/student1/data-intelligence-mcp-server`). In the next step, replace `<absolute-path-to>/data-intelligence-mcp-server` with it.
 
+> **Windows:** `pwd` prints a path like `C:\Users\<your-user>\data-intelligence-mcp-server`. In the next step you must write it in JSON with **every backslash doubled**: `C:\\Users\\<your-user>\\data-intelligence-mcp-server`.
+
 #### Step 3 — Global config (watsonx.data + Intelligence servers)
 
 Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below. If the file already exists, merge the `mcpServers` block — do not overwrite the whole file.
@@ -469,8 +473,8 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "disabled": false
     },
     "wxdi-mcp-server": {
-      "command": "<absolute-path-to>/data-intelligence-mcp-server/.venv/bin/python",
-      "args": ["-m", "app.main", "--transport", "stdio"],
+      "command": "uv",
+      "args": ["run", "python", "-m", "app.main", "--transport", "stdio"],
       "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
       "env": {
         "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
@@ -485,7 +489,9 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 }
 ```
 
-> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2. Replace `<absolute-path-to>/data-intelligence-mcp-server` in both the `command` and `cwd` lines with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
+> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
+
+> **Windows:** A single backslash in a JSON string starts an escape sequence, so a path such as `C:\Users\...` makes the file invalid. The editor underlines it with a warning such as "Invalid unicode sequence in string", and Bob **silently drops every server in that file**. If a server disappears after you edit an `mcp.json` file, look for single backslashes first.
 
 #### Step 4 — Reload Bob
 
@@ -1045,7 +1051,7 @@ Cause: Missing or incorrect CA certificate.
 Solution:
 ```bash
 # Verify the cert is in place
-ls -la kafka-ca.crt
+ls kafka-ca.crt
 
 # Check it is a valid cert
 openssl x509 -in kafka-ca.crt -noout -subject
@@ -1053,6 +1059,8 @@ openssl x509 -in kafka-ca.crt -noout -subject
 # Verify KAFKA_SSL_CA_LOCATION in your .env points to it
 grep SSL mcp_ingestion_server/.env
 ```
+
+> **Windows:** `openssl` and `grep` are not available in PowerShell. Check the file with `ls kafka-ca.crt`, and check the setting with `Select-String SSL mcp_ingestion_server\.env`. Skip the `openssl` check, or ask your instructor to look at the certificate.
 
 ---
 

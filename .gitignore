@@ -13,3 +13,6 @@ build/
 *.pem
 *.crt
 *.key
+
+# Generated per attendee by schema/generate_sql.py
+schema/my_kafka_events.sql

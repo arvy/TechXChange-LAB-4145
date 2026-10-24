@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "affiliate-junction-ingestion": {
-      "command": ".venv/bin/python",
-      "args": ["-m", "mcp_ingestion_server.server"],
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp_ingestion_server.server"],
       "cwd": "${workspaceFolder}",
       "alwaysAllow": ["subscribe_and_ingest"]
     }
