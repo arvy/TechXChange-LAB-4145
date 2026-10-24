@@ -1,8 +1,8 @@
 """Generate your personal watsonx.data SQL statements.
 
-Asks for your attendee ID and the COS bucket name, then prints the contents of
-kafka_events.sql with both placeholders filled in. Copy the output into the
-watsonx.data Query workspace.
+Asks for your attendee ID and the COS bucket name, then writes every query of
+the lab (kafka_events.sql) to my_kafka_events.sql with both placeholders filled
+in. Copy the statements from that file into the watsonx.data Query workspace.
 
 Run from the project root:
 
@@ -68,18 +68,14 @@ def main() -> None:
         print("Nothing generated. Run the script again.")
         sys.exit(1)
 
-    # Drop the instruction comments that talk about the placeholders or this
-    # script; they make no sense once the values are filled in.
+    # Drop the instruction comments that talk about filling in the placeholders
+    # or about this script; they make no sense once the values are filled in.
     lines = [
         line
         for line in TEMPLATE.read_text(encoding="utf-8").splitlines()
         if not (
-            line.startswith("--")
-            and (
-                ID_PLACEHOLDER in line
-                or BUCKET_PLACEHOLDER in line
-                or "generate_sql.py" in line
-            )
+            line.startswith("-- Replace <")
+            or "generate_sql.py" in line
         )
     ]
     sql = "\n".join(lines).replace(ID_PLACEHOLDER, attendee_id)
@@ -88,12 +84,10 @@ def main() -> None:
     OUTPUT.write_text(sql + "\n", encoding="utf-8")
 
     print("\n" + "=" * 70)
-    print("Copy everything below into the watsonx.data Query workspace.")
-    print("=" * 70 + "\n")
-    print(sql)
-    print("\n" + "=" * 70)
-    print("The same SQL is saved in: schema/my_kafka_events.sql")
-    print("Open that file in Bob's editor to copy it without scrolling.")
+    print("Your SQL is saved in: schema/my_kafka_events.sql")
+    print("Open that file in Bob's editor and copy the statements from there.")
+    print("It has five parts, each labelled with the lab guide section that uses it.")
+    print("Run Part 1 now (CREATE SCHEMA, CREATE TABLE, SELECT), one statement at a time.")
     print("=" * 70)
 
 

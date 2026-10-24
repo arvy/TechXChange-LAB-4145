@@ -359,13 +359,13 @@ The script asks two questions:
 1. **Your attendee ID** (for example `student1`), as assigned by your instructor.
 2. **The COS bucket name** you just copied.
 
-It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it prints three statements with your values filled in, and saves the same text to `schema/my_kafka_events.sql`:
+It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it saves every query used in this lab, with your values filled in, to `schema/my_kafka_events.sql`. The file has five parts, each labelled with the section of this guide that uses it. Part 1 holds the three statements you run now:
 
 1. **Create your personal schema**, `affiliate_junction_<your attendee ID>`, stored in the COS bucket.
 2. **Create the `kafka_events` landing table** in that schema.
 3. **Verify** that the table exists, with a `SELECT` that should return no rows.
 
-The terminal window may be too short to show all of the output, and the schema statement comes first. Instead of copying from the terminal, open `schema/my_kafka_events.sql` in Bob's editor and copy the statements from there. Paste them into **Query workspace** and run them one at a time, in order. Check that you have all three: `CREATE SCHEMA`, `CREATE TABLE` and `SELECT`.
+Open `schema/my_kafka_events.sql` in Bob's editor and copy the three statements of **Part 1** from there. Paste them into **Query workspace** and run them one at a time, in order. Check that you have all three: `CREATE SCHEMA`, `CREATE TABLE` and `SELECT`. Leave the other parts for now. You will come back to the same file for the queries in sections 5.5, 5.6 and 7.2.
 
 **For reference:** this is the table definition the script generates. Do not copy it from here. It still contains the `<your-attendee-id>` placeholder, and the script fills that in for you.
 
@@ -598,7 +598,7 @@ The last call returns fewer rows than that, and Bob should then stop and give yo
 
 #### If a call times out
 
-Do not simply retry. The first call may still be running, and a retry would load the same events twice. Check the row count first, in the watsonx.data Query workspace:
+Do not simply retry. The first call may still be running, and a retry would load the same events twice. Check the row count first, in the watsonx.data Query workspace (Part 2 of `schema/my_kafka_events.sql` has this query already filled in):
 
 ```sql
 SELECT count(*) AS total, count(DISTINCT event_id) AS distinct_events
@@ -609,7 +609,7 @@ If `total` is greater than `distinct_events`, you have duplicates. Run `DELETE F
 
 ### 5.6 Verify the data in watsonx.data
 
-Go back to the watsonx.data **Query Workspace** and run the following queries. Replace `<your-attendee-id>` with your own ID in each one first:
+Go back to the watsonx.data **Query Workspace** and run the following queries. They are in Part 3 of `schema/my_kafka_events.sql`, already filled in with your ID. If you prefer to copy from here, replace `<your-attendee-id>` with your own ID in each one first:
 
 ```sql
 -- How many rows landed?
@@ -887,7 +887,7 @@ Try deeper questions. Start with conversion time:
 On average, how long does it take for each publisher cohort to convert after seeing an ad?
 ```
 
-Bob will generate and execute SQL similar to:
+Bob will generate and execute SQL similar to the following. Part 4 of `schema/my_kafka_events.sql` has this query and the advertiser query below, ready to run in the Query workspace if you want to compare:
 
 ```sql
 SELECT
@@ -1096,7 +1096,7 @@ Cause: `uv` is not installed or not on your path, or the terminal is not in the 
 Solution:
 1. If you see `uv: command not found`, install `uv` as described in section 4.3, then open a new terminal.
 2. If you see `No such file or directory`, your terminal is in the wrong folder. Change to the project folder, the one that contains `pyproject.toml`, and run the command again.
-3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the bucket name in **every** place they appear, then paste the statements into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
+3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the bucket name in **every** place they appear, then paste the statements of Part 1 (`CREATE SCHEMA`, `CREATE TABLE`, `SELECT`) into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
 
 ---
 
@@ -1148,7 +1148,7 @@ ingested_at                 timestamp  — when the row was written to Iceberg
 
 ### Useful SQL snippets
 
-Replace `<your-attendee-id>` with your own ID in each query before you run it.
+These queries are also in `schema/my_kafka_events.sql`, already filled in with your ID. If you copy them from here, replace `<your-attendee-id>` with your own ID in each query before you run it.
 
 ```sql
 -- Event type distribution
