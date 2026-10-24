@@ -25,7 +25,7 @@
    - 3.3 [Lab environment connectivity](#33-lab-environment-connectivity)
 4. [Getting started — environment setup](#4-getting-started--environment-setup)
    - 4.1 [Credentials and access](#41-credentials-and-access)
-   - 4.2 [Clone the lab repository](#42-clone-the-lab-repository)
+   - 4.2 [Open IBM Bob and the lab repository](#42-open-ibm-bob-and-the-lab-repository)
    - 4.3 [Install dependencies](#43-install-dependencies)
    - 4.4 [Configure your environment files](#44-configure-your-environment-files)
 5. [Exercise 1 — Ingest: Stream Kafka events into watsonx.data (~25 min)](#5-exercise-1--ingest-stream-kafka-events-into-watsonxdata-25-min)
@@ -164,13 +164,13 @@ This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with wa
 | Confluent Platform | 3 brokers (addresses on your credential sheet) · SASL_SSL | Shared — all attendees read the same topic |
 | watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
-| IBM Bob | AI coding assistant desktop app · Trial version | Personal — installed on your laptop |
-| Lab compute | Your laptop | Personal |
+| IBM Bob | AI coding assistant desktop app · Trial version · pre-installed on the lab workstations | Personal — on your workstation |
+| Lab compute | Your workstation | Personal |
 
 ### 3.3 Lab environment connectivity
 
 ```
-Your laptop
+Your workstation
     │
     ▼
 IBM Bob (desktop application)
@@ -226,9 +226,13 @@ The broker addresses, the instance CRN and the engine ID are the same for all at
 
 You will use this API key in section 4.4 when configuring your `.env` file and in section 5.3 when setting up the MCP server connections.
 
-### 4.2 Install IBM Bob and open the lab repository
+### 4.2 Open IBM Bob and the lab repository
 
-IBM Bob is a desktop application. This lab uses the Bob Trial version, so you don't need a licence key. If you have not already installed it, download it now:
+IBM Bob is a desktop application. This lab uses the Bob Trial version, so you don't need a licence key.
+
+> **On the lab workstations:** IBM Bob is already installed. Do not download it. Open Bob and continue with the next step.
+
+If you are using your own laptop and Bob is not installed yet, download it now:
 
 1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
 2. Run the installer and follow the prompts.
@@ -248,7 +252,7 @@ Now open the cloned repository **as a folder** in Bob, so that the repository ro
 
 > **Important:** Open the folder itself — do not open individual files from it. Bob loads the workspace MCP config (`.bob/mcp.json`) and resolves `${workspaceFolder}` from the open folder (see section 5.3), and the integrated terminal starts in it. Run all later commands in a terminal opened in this folder.
 
-> **Already have Bob installed?** Skip the download — just open a new terminal, clone the repository, and open it as a folder.
+> **Already have Bob installed?** Skip the download. Open a new terminal, clone the repository, and open it as a folder.
 
 ### 4.3 Install dependencies
 
@@ -965,7 +969,7 @@ If you did not complete all exercises during the session, you can continue in th
 
 Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The events stay in the Kafka topic, so you can load them again with a new `consumer_group_id`.
 
-To resume, simply re-open Bob on your laptop, navigate to the `TechXChange-LAB-4145` folder, and continue — your `.env` files and virtualenv are still in place.
+To resume, simply re-open Bob, navigate to the `TechXChange-LAB-4145` folder, and continue — your `.env` files and virtualenv are still in place.
 
 ---
 
