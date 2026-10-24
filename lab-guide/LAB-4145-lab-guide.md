@@ -217,7 +217,7 @@ All lab credentials are in one zip file, `lab-4145-credentials.zip`. Your instru
 
 #### Log in to IBM Cloud and generate your API key
 
-1. Open `https://cloud.ibm.com` in a browser and sign in with the user name and password from your line in `ibm-cloud-logins.txt`.
+1. Open the IBM Cloud login URL in a browser. It is in the credentials files or on the lab page. Sign in with the user name and password from your line in `ibm-cloud-logins.txt`.
 
 2. Once logged in, navigate to **Manage → Access (IAM) → API Keys** using the top navigation bar.
 
