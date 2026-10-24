@@ -1046,7 +1046,7 @@ Cause: Usually a SQL syntax error or a type mismatch.
 Solution:
 1. Check that your `WATSONX_DATA_TARGET_TABLE` in `.env` exactly matches the table you created (including your attendee ID).
 2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_<your-attendee-id>`.
-3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events using the Presto engine <Presto engine ID from your credential sheet>`. Bob's query tool needs an engine to run on, so naming it avoids a wrong guess.
+3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events using the Presto engine`. Bob looks up the engine itself.
 
 ---
 
