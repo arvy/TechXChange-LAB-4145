@@ -134,7 +134,7 @@ The lab is built around a five-stage pipeline:
 ┌─────────────────────────────────────────────────────────────┐
 │            watsonx.data (Iceberg / Parquet)                  │
 │  demo_data.affiliate_junction_<your-id>.kafka_events          │
-│  Presto engine: presto44                                    │
+│  Presto engine                                              │
 └────────────┬──────────────────────────┬──────────────────────┘
              │ metadata enrichment       │ SQL queries
              ▼                           ▼
@@ -162,7 +162,7 @@ This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with wa
 | Resource | Details | Shared / Personal |
 |---|---|---|
 | Confluent Platform | 3 brokers (addresses on your credential sheet) · SASL_SSL | Shared — all attendees read the same topic |
-| watsonx.data Premium | Toronto region · Presto engine `presto44` | Shared instance, personal schema per attendee |
+| watsonx.data Premium | Toronto region · Presto engine (ID on your credential sheet) | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
 | IBM Bob | AI coding assistant desktop app · Trial version · pre-installed on the lab workstations | Personal — on your workstation |
 | Lab compute | Your workstation | Personal |
@@ -1046,7 +1046,7 @@ Cause: Usually a SQL syntax error or a type mismatch.
 Solution:
 1. Check that your `WATSONX_DATA_TARGET_TABLE` in `.env` exactly matches the table you created (including your attendee ID).
 2. Verify the table exists: go to Query Workspace and run `SHOW TABLES IN demo_data.affiliate_junction_<your-attendee-id>`.
-3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events using presto44`.
+3. Try a manual SELECT first to confirm connectivity: ask Bob `Run SELECT count(*) FROM demo_data.affiliate_junction_<your-attendee-id>.kafka_events using the Presto engine <Presto engine ID from your credential sheet>`. Bob's query tool needs an engine to run on, so naming it avoids a wrong guess.
 
 ---
 
