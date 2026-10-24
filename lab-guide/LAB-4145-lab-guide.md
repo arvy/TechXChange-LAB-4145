@@ -480,7 +480,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
         "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
         "DI_APIKEY": "<your IBM Cloud API key from credential sheet>",
         "DI_ENV_MODE": "SaaS",
-        "LOG_FILE_PATH": "/tmp/di-mcp-server-logs"
+        "LOG_FILE_PATH": "logs/di-mcp-server.log"
       },
       "disabled": false,
       "alwaysAllow": []
@@ -490,6 +490,8 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 ```
 
 > **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
+>
+> The `LOG_FILE_PATH` line is relative to the `cwd` folder, so the server writes its log to `logs/di-mcp-server.log` inside the `data-intelligence-mcp-server` folder. Open that file if the server fails or a tool call returns an error. The path works on every operating system, so leave it as written.
 
 > **Windows:** A single backslash in a JSON string starts an escape sequence, so a path such as `C:\Users\...` makes the file invalid. The editor underlines it with a warning such as "Invalid unicode sequence in string", and Bob **silently drops every server in that file**. If a server disappears after you edit an `mcp.json` file, look for single backslashes first.
 
