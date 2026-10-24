@@ -1,20 +1,22 @@
 # ---------------------------------------------------------------------------
 # Confluent Platform / Kafka connection
-# Replace each <...> placeholder with the value from your credential sheet.
+# Replace each <...> placeholder with the value from your credentials files
+# (lab-4145-credentials.zip, see section 4.2 of the lab guide).
 # Keep SASL_SSL, PLAIN and the username as they are: with the wrong security
 # protocol the consumer connects but never receives messages.
 # ---------------------------------------------------------------------------
 
 # Comma-separated list of all three broker addresses, each with its port
+# (from kafka-connect-details.txt)
 KAFKA_BOOTSTRAP_SERVERS=<broker1:port>,<broker2:port>,<broker3:port>
 KAFKA_TOPIC=affiliate-junction-events
 KAFKA_SECURITY_PROTOCOL=SASL_SSL
 KAFKA_SASL_MECHANISM=PLAIN
 KAFKA_SASL_USERNAME=kafka-admin
-KAFKA_SASL_PASSWORD=<your Kafka SASL password>
+KAFKA_SASL_PASSWORD=<sasl-password from kafka-connect-details.txt>
 
 # Path to the Confluent Platform CA certificate (relative to the project root).
-# Your instructor provides this file; copy it into the project root.
+# It is in the lab-4145-credentials folder (kafka-ca.crt); copy it into the project root.
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 # ---------------------------------------------------------------------------
@@ -28,11 +30,12 @@ WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse
 # IBM Cloud API key — must have Manager role on the watsonx.data instance
 WATSONX_DATA_API_KEY=<your IBM Cloud API key>
 
-# Instance CRN — from your credential sheet
+# Instance CRN — from watsonx-data-connect-details.txt
 WATSONX_DATA_INSTANCE_ID=<watsonx.data instance CRN>
 
-# Presto engine ID to use for INSERT jobs — from your credential sheet
+# Presto engine ID to use for INSERT jobs — from watsonx-data-connect-details.txt
 WATSONX_DATA_ENGINE_ID=<Presto engine ID>
 
-# Target Iceberg table for ingestion
-WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction.kafka_events
+# Target Iceberg table for ingestion. Replace <your-attendee-id> with your
+# attendee ID (for example student1): each attendee has a personal schema.
+WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events

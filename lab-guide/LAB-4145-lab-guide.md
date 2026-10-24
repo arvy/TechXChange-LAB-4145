@@ -24,8 +24,8 @@
    - 3.2 [Infrastructure components](#32-infrastructure-components)
    - 3.3 [Lab environment connectivity](#33-lab-environment-connectivity)
 4. [Getting started — environment setup](#4-getting-started--environment-setup)
-   - 4.1 [Credentials and access](#41-credentials-and-access)
-   - 4.2 [Open IBM Bob and the lab repository](#42-open-ibm-bob-and-the-lab-repository)
+   - 4.1 [Open IBM Bob, sign in, and open the lab repository](#41-open-ibm-bob-sign-in-and-open-the-lab-repository)
+   - 4.2 [Credentials and access](#42-credentials-and-access)
    - 4.3 [Install dependencies](#43-install-dependencies)
    - 4.4 [Configure your environment files](#44-configure-your-environment-files)
 5. [Exercise 1 — Ingest: Stream Kafka events into watsonx.data (~25 min)](#5-exercise-1--ingest-stream-kafka-events-into-watsonxdata-25-min)
@@ -157,7 +157,7 @@ The lab is built around a five-stage pipeline:
 
 ### 3.2 Infrastructure components
 
-This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with watsonx.data portfolio"** environment. All infrastructure is pre-provisioned; each participant receives their own IBM Cloud login (see section 4.1).
+This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with watsonx.data portfolio"** environment. All infrastructure is pre-provisioned; each participant receives their own IBM Cloud login (see section 4.2).
 
 | Resource | Details | Shared / Personal |
 |---|---|---|
@@ -188,7 +188,7 @@ IBM Bob (desktop application)
 
 All three MCP servers run as processes on your workstation. Bob starts them and talks to them over stdio. Each server then calls the remote service with the credentials you configure.
 
-All credentials come from the `lab-4145-credentials.zip` file described in section 4.1. You will configure them into `.env` files in step 4.4.
+All credentials come from the `lab-4145-credentials.zip` file described in section 4.2. You will configure them into `.env` files in step 4.4.
 
 ---
 
@@ -196,7 +196,44 @@ All credentials come from the `lab-4145-credentials.zip` file described in secti
 
 > **Estimated time: ~10 minutes**
 
-### 4.1 Credentials and access
+### 4.1 Open IBM Bob, sign in, and open the lab repository
+
+IBM Bob is a desktop application. This lab uses the Bob Trial version, so you don't need a licence key. You do need to sign in to Bob, and that is the first step of the lab.
+
+> **On the lab workstations:** IBM Bob is already installed. Do not download it. Open Bob from the applications menu or desktop shortcut.
+
+If you are using your own laptop and Bob is not installed yet, download it now:
+
+1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
+2. Run the installer and follow the prompts.
+3. Open Bob.
+
+#### Sign in to Bob
+
+1. When Bob opens, sign in with your own IBMid (your personal or IBM account). This is not the IBM Cloud lab login from section 4.2. You use that later.
+2. Follow the authentication flow in your browser, then return to Bob after you complete it.
+3. Check that Bob shows its chat panel and is ready to use before you continue. If the sign-in does not complete, ask your instructor for help.
+
+#### Clone the lab repository
+
+Once you are signed in to Bob, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
+
+```bash
+git clone https://github.com/arvy/TechXChange-LAB-4145.git
+cd TechXChange-LAB-4145
+```
+
+Now open the cloned repository **as a folder** in Bob, so that the repository root becomes your workspace:
+
+1. In Bob, use the **File** menu to open a folder (**Open Folder…**; on some systems the entry is called **Open…**).
+2. Select the `TechXChange-LAB-4145` folder you just cloned (the folder that contains `pyproject.toml`, not a folder inside it or the folder above it), and confirm.
+3. If Bob asks whether you trust this folder, choose to trust it.
+
+> **Important:** Open the folder itself — do not open individual files from it. Bob loads the workspace MCP config (`.bob/mcp.json`) and resolves `${workspaceFolder}` from the open folder (see section 5.3), and the integrated terminal starts in it. Run all later commands in a terminal opened in this folder.
+
+> **Already have Bob installed?** Skip the download. Open Bob, sign in, then open a new terminal, clone the repository, and open it as a folder.
+
+### 4.2 Credentials and access
 
 At the start of the lab your instructor assigns you an **attendee ID**, for example `student1`. Remember it: you use it to find your IBM Cloud login and to name your personal schema and table.
 
@@ -233,34 +270,6 @@ All lab credentials are in one zip file, `lab-4145-credentials.zip`. Your instru
 
 You will use this API key in section 4.4 when configuring your `.env` file and in section 5.3 when setting up the MCP server connections.
 
-### 4.2 Open IBM Bob and the lab repository
-
-IBM Bob is a desktop application. This lab uses the Bob Trial version, so you don't need a licence key.
-
-> **On the lab workstations:** IBM Bob is already installed. Do not download it. Open Bob and continue with the next step.
-
-If you are using your own laptop and Bob is not installed yet, download it now:
-
-1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
-2. Run the installer and follow the prompts.
-
-Once Bob is open, clone the lab repository using Bob's integrated terminal:
-
-```bash
-git clone https://github.com/arvy/TechXChange-LAB-4145.git
-cd TechXChange-LAB-4145
-```
-
-Now open the cloned repository **as a folder** in Bob, so that the repository root becomes your workspace:
-
-1. In Bob, use the **File** menu to open a folder (**Open Folder…**; on some systems the entry is called **Open…**).
-2. Select the `TechXChange-LAB-4145` folder you just cloned (the folder that contains `pyproject.toml`, not a folder inside it or the folder above it), and confirm.
-3. If Bob asks whether you trust this folder, choose to trust it.
-
-> **Important:** Open the folder itself — do not open individual files from it. Bob loads the workspace MCP config (`.bob/mcp.json`) and resolves `${workspaceFolder}` from the open folder (see section 5.3), and the integrated terminal starts in it. Run all later commands in a terminal opened in this folder.
-
-> **Already have Bob installed?** Skip the download. Open a new terminal, clone the repository, and open it as a folder.
-
 ### 4.3 Install dependencies
 
 The project uses `uv` for Python environment management. Install it if it is not already on your machine:
@@ -280,7 +289,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv sync
 ```
 
-Get the Confluent Platform CA certificate, `kafka-ca.crt`, and save it in the project root, the same folder as `pyproject.toml`. It is in the `lab-4145-credentials` folder you unzipped in section 4.1, so copy it from there. Without it the connection to Kafka fails.
+Get the Confluent Platform CA certificate, `kafka-ca.crt`, and save it in the project root, the same folder as `pyproject.toml`. It is in the `lab-4145-credentials` folder you unzipped in section 4.2, so copy it from there. Without it the connection to Kafka fails.
 
 Verify:
 
@@ -312,7 +321,7 @@ KAFKA_SASL_PASSWORD=<sasl-password from kafka-connect-details.txt>
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
-WATSONX_DATA_API_KEY=<your IBM Cloud API key from section 4.1>
+WATSONX_DATA_API_KEY=<your IBM Cloud API key from section 4.2>
 WATSONX_DATA_INSTANCE_ID=<Instance ID (CRN) from watsonx-data-connect-details.txt>
 WATSONX_DATA_ENGINE_ID=<Presto Engine ID from watsonx-data-connect-details.txt>
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
@@ -338,17 +347,11 @@ In this exercise you will:
 
 Open the watsonx.data console through IBM Cloud:
 
-1. Sign in to IBM Cloud with the user name and password from your line in `ibm-cloud-logins.txt` (the same login you used in section 4.1).
+1. Sign in to IBM Cloud with the user name and password from your line in `ibm-cloud-logins.txt` (the same login you used in section 4.2).
 2. In the left menu bar, click **Resource list** (the icon that looks like a bulleted list).
 3. Scroll down to the **Databases** category and Ctrl-click (Cmd-click on Mac) the **watsonx.data** link to open it in a new tab. Keep the **Resource list** tab open, because you will come back to it later in the lab.
 4. Click **Open console**.
 5. In the watsonx.data console, navigate to **Query Workspace**.
-
-You need the name of the Cloud Object Storage (COS) bucket that holds the `demo_data` catalog. Look it up first:
-
-1. In the watsonx.data console, open **Infrastructure manager**.
-2. Click the COS bucket that is attached to the `demo_data` catalog.
-3. Copy the bucket name.
 
 Now generate your SQL. Every attendee has their own schema, so the statements must contain your own attendee ID. A script fills it in for you, which avoids typing another attendee's ID by mistake. In a terminal in the project folder, run:
 
@@ -359,7 +362,7 @@ uv run python schema/generate_sql.py
 The script asks two questions:
 
 1. **Your attendee ID** (for example `student1`), as assigned by your instructor.
-2. **The COS bucket name** you just copied.
+2. **The COS bucket name** from `watsonx-data-connect-details.txt`.
 
 It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it saves every query used in this lab, with your values filled in, to `schema/my_kafka_events.sql`. The file has five parts, each labelled with the section of this guide that uses it. Part 1 holds the three statements you run now:
 
@@ -515,7 +518,7 @@ When you are done, the file has this shape (values left out). Check that there i
 }
 ```
 
-> **Note:** Both servers use the same IBM Cloud API key you created in section 4.1. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
+> **Note:** Both servers use the same IBM Cloud API key you created in section 4.2. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
 >
 > The `LOG_FILE_PATH` line is relative to the `cwd` folder, so the server writes its log to `logs/di-mcp-server.log` inside the `data-intelligence-mcp-server` folder. Open that file if the server fails or a tool call returns an error. The path works on every operating system, so leave it as written.
 
@@ -727,7 +730,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 3. Click **Enter JSON snippet** and paste the JSON you copied above — the fields will auto-populate.
 4. Check that **SSL** is enabled.
 5. Set the credential type to **Personal** (not **Shared**).
-6. Under the general credentials, enter your IBM Cloud API key (from section 4.1), then click **Apply**.
+6. Under the general credentials, enter your IBM Cloud API key (from section 4.2), then click **Apply**.
 7. Click **Test connection** and wait for it to report success. If it fails, re-check the pasted JSON, that SSL is enabled, and the API key.
 8. Name the connection `wx_presto_connect` and click **Create**.
 
@@ -1160,7 +1163,7 @@ Cause: `uv` is not installed or not on your path, or the terminal is not in the 
 Solution:
 1. If you see `uv: command not found`, install `uv` as described in section 4.3, then quit Bob completely and open it again (a new terminal is not enough).
 2. If you see `No such file or directory`, your terminal is in the wrong folder. Change to the project folder, the one that contains `pyproject.toml`, and run the command again.
-3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the bucket name in **every** place they appear, then paste the statements of Part 1 (`CREATE SCHEMA`, `CREATE TABLE`, `SELECT`) into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
+3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the COS bucket name from `watsonx-data-connect-details.txt` in **every** place they appear, then paste the statements of Part 1 (`CREATE SCHEMA`, `CREATE TABLE`, `SELECT`) into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
 
 ---
 
