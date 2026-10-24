@@ -157,12 +157,12 @@ The lab is built around a five-stage pipeline:
 
 ### 3.2 Infrastructure components
 
-This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with watsonx.data portfolio"** environment. All infrastructure is pre-provisioned; each participant receives their own TechZone login.
+This lab uses the **IBM TechZone "Confluent Platform Enterprise Software with watsonx.data portfolio"** environment. All infrastructure is pre-provisioned; each participant receives their own IBM Cloud login (see section 4.1).
 
 | Resource | Details | Shared / Personal |
 |---|---|---|
-| Confluent Platform | 3 brokers (addresses on your credential sheet) · SASL_SSL | Shared — all attendees read the same topic |
-| watsonx.data Premium | Toronto region · Presto engine (ID on your credential sheet) | Shared instance, personal schema per attendee |
+| Confluent Platform | 3 brokers (addresses in `kafka-connect-details.txt`) · SASL_SSL | Shared — all attendees read the same topic |
+| watsonx.data Premium | Toronto region · Presto engine (ID in `watsonx-data-connect-details.txt`) | Shared instance, personal schema per attendee |
 | watsonx.data Intelligence | SaaS · automated enrichment | Shared instance |
 | IBM Bob | AI coding assistant desktop app · Trial version · pre-installed on the lab workstations | Personal — on your workstation |
 | Lab compute | Your workstation | Personal |
@@ -186,7 +186,7 @@ IBM Bob (desktop application)
     └──────────────────────────► watsonx.data Intelligence MCP server
 ```
 
-All credentials are provided via your TechZone environment. You will configure them into `.env` files in step 4.4.
+All credentials come from the `lab-4145-credentials.zip` file described in section 4.1. You will configure them into `.env` files in step 4.4.
 
 ---
 
@@ -196,23 +196,28 @@ All credentials are provided via your TechZone environment. You will configure t
 
 ### 4.1 Credentials and access
 
-Your lab instructor will provide a credential sheet with:
+At the start of the lab your instructor assigns you an **attendee ID**, for example `student1`. Remember it: you use it to find your IBM Cloud login and to name your personal schema and table.
 
-| Item | Where to find it |
-|---|---|
-| `ATTENDEE_ID` | e.g. `student1` — assigned at lab start |
-| IBM Cloud login URL | Printed on your credential sheet |
-| IBM Cloud username & password | Printed on your credential sheet |
-| Kafka SASL password | Printed on your credential sheet |
-| Kafka broker addresses | Printed on your credential sheet |
-| watsonx.data instance CRN | Printed on your credential sheet |
-| watsonx.data Presto engine ID | Printed on your credential sheet |
+All lab credentials are in one zip file, `lab-4145-credentials.zip`. Your instructor gives you the download location.
 
-The broker addresses, the instance CRN and the engine ID are the same for all attendees. The steps below show them as placeholders — replace each placeholder with the value from your credential sheet.
+1. Download `lab-4145-credentials.zip` and unzip it. You get a folder, `lab-4145-credentials`, with four files:
+
+   | File | What it contains | Shared / Personal |
+   |---|---|---|
+   | `ibm-cloud-logins.txt` | IBM Cloud usernames and passwords for **all** attendees, one line per attendee (tab-separated) | Find your own line |
+   | `kafka-connect-details.txt` | Kafka broker addresses, SASL username and SASL password | Same for all attendees |
+   | `watsonx-data-connect-details.txt` | watsonx.data instance CRN, Presto engine ID and COS bucket name | Same for all attendees |
+   | `kafka-ca.crt` | Confluent Platform CA certificate, needed in section 4.3 | Same for all attendees |
+
+2. Open `ibm-cloud-logins.txt` and find the line for your attendee ID. The user name starts with your attendee ID, for example `student1@<account-id>.techzone.com`. Use only your own line.
+
+   > **Important:** The file lists the logins of every attendee, so check that the line starts with your own attendee ID before you copy anything. Do not sign in with another attendee's account: you would overwrite their schema and project.
+
+3. Keep the folder open. The steps below refer to these files as your **credentials files**. Where a step shows a `<…>` placeholder, replace it with the matching value from the credentials files.
 
 #### Log in to IBM Cloud and generate your API key
 
-1. Open the URL from your credential sheet in a browser (e.g. `https://cloud.ibm.com`) and sign in with the student username and password provided.
+1. Open `https://cloud.ibm.com` in a browser and sign in with the user name and password from your line in `ibm-cloud-logins.txt`.
 
 2. Once logged in, navigate to **Manage → Access (IAM) → API Keys** using the top navigation bar.
 
@@ -273,7 +278,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv sync
 ```
 
-Get the Confluent Platform CA certificate, `kafka-ca.crt`, and save it in the project root, the same folder as `pyproject.toml`. Your credential sheet tells you where to download it, or your instructor can give you the file. Without it the connection to Kafka fails.
+Get the Confluent Platform CA certificate, `kafka-ca.crt`, and save it in the project root, the same folder as `pyproject.toml`. It is in the `lab-4145-credentials` folder you unzipped in section 4.1, so copy it from there. Without it the connection to Kafka fails.
 
 Verify:
 
@@ -293,25 +298,25 @@ The MCP ingestion server reads its credentials from `mcp_ingestion_server/.env`.
 cp mcp_ingestion_server/env-sample mcp_ingestion_server/.env
 ```
 
-Open `mcp_ingestion_server/.env` in Bob's editor and replace each `<…>` placeholder with the value from your credential sheet:
+Open `mcp_ingestion_server/.env` in Bob's editor and replace each `<…>` placeholder with the value from your credentials files:
 
 ```
-KAFKA_BOOTSTRAP_SERVERS=<broker addresses from your credential sheet, comma-separated>
+KAFKA_BOOTSTRAP_SERVERS=<broker addresses from kafka-connect-details.txt, comma-separated>
 KAFKA_TOPIC=affiliate-junction-events
 KAFKA_SECURITY_PROTOCOL=SASL_SSL
 KAFKA_SASL_MECHANISM=PLAIN
 KAFKA_SASL_USERNAME=kafka-admin
-KAFKA_SASL_PASSWORD=<your Kafka SASL password from TechZone>
+KAFKA_SASL_PASSWORD=<sasl-password from kafka-connect-details.txt>
 KAFKA_SSL_CA_LOCATION=kafka-ca.crt
 
 WATSONX_DATA_BASE_URL=https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api
-WATSONX_DATA_API_KEY=<your IBM Cloud API key from TechZone>
-WATSONX_DATA_INSTANCE_ID=<watsonx.data instance CRN from your credential sheet>
-WATSONX_DATA_ENGINE_ID=<Presto engine ID from your credential sheet>
+WATSONX_DATA_API_KEY=<your IBM Cloud API key from section 4.1>
+WATSONX_DATA_INSTANCE_ID=<Instance ID (CRN) from watsonx-data-connect-details.txt>
+WATSONX_DATA_ENGINE_ID=<Presto Engine ID from watsonx-data-connect-details.txt>
 WATSONX_DATA_TARGET_TABLE=demo_data.affiliate_junction_<your-attendee-id>.kafka_events
 ```
 
-> **Important:** Replace `<your-attendee-id>` with your TechZone username (e.g. `student1`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
+> **Important:** Replace `<your-attendee-id>` with your attendee ID (e.g. `student1`) in the `WATSONX_DATA_TARGET_TABLE` line. This namespaces your Iceberg table so attendees do not overwrite each other.
 
 > **Note:** Your instructor has already published the events to the Kafka topic — you do not need to configure or start a producer.
 
@@ -331,7 +336,7 @@ In this exercise you will:
 
 Open the watsonx.data console through IBM Cloud:
 
-1. Sign in to IBM Cloud with the student username and password from your credential sheet (the same login you used in section 4.1).
+1. Sign in to IBM Cloud with the user name and password from your line in `ibm-cloud-logins.txt` (the same login you used in section 4.1).
 2. In the left menu bar, click **Resource list** (the icon that looks like a bulleted list).
 3. Scroll down to the **Databases** category and click the **watsonx.data** link.
 4. Click **Open console**.
@@ -351,7 +356,7 @@ uv run python schema/generate_sql.py
 
 The script asks two questions:
 
-1. **Your attendee ID** (for example `student1`), as printed on your credential sheet.
+1. **Your attendee ID** (for example `student1`), as assigned by your instructor.
 2. **The COS bucket name** you just copied.
 
 It shows both answers and asks you to confirm. If you enter a value that cannot be valid (for example one containing spaces), it asks again. When you confirm, it prints three statements with your values filled in, and saves the same text to `schema/my_kafka_events.sql`:
@@ -471,8 +476,8 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
       "env": {
         "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
-        "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from credential sheet>",
-        "WATSONX_DATA_INSTANCE_ID": "<watsonx.data instance CRN from credential sheet>"
+        "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from section 4.1>",
+        "WATSONX_DATA_INSTANCE_ID": "<Instance ID (CRN) from watsonx-data-connect-details.txt>"
       },
       "disabled": false
     },
@@ -482,7 +487,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
       "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
       "env": {
         "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
-        "DI_APIKEY": "<your IBM Cloud API key from credential sheet>",
+        "DI_APIKEY": "<your IBM Cloud API key from section 4.1>",
         "DI_ENV_MODE": "SaaS",
         "LOG_FILE_PATH": "logs/di-mcp-server.log"
       },
@@ -493,7 +498,7 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 }
 ```
 
-> **Note:** Both servers use the same IBM Cloud API key from your credential sheet. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
+> **Note:** Both servers use the same IBM Cloud API key you created in section 4.1. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
 >
 > The `LOG_FILE_PATH` line is relative to the `cwd` folder, so the server writes its log to `logs/di-mcp-server.log` inside the `data-intelligence-mcp-server` folder. Open that file if the server fails or a tool call returns an error. The path works on every operating system, so leave it as written.
 
