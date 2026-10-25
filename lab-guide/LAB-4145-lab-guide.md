@@ -690,7 +690,7 @@ Before Bob can run metadata imports, you need to complete three one-time setup s
 
 #### Step 1 — Create your project in watsonx.data Intelligence
 
-1. Open the IBM Cloud login URL from your credential sheet and sign in if prompted. You should still be logged in from section 5.1.
+1. Open the IBM Cloud login URL you used in section 4.2 and sign in if prompted, using your login from `ibm-cloud-logins.txt`. You should still be logged in from section 5.1.
 2. Click **Resource list** in the left navigation.
 3. Under the **AI / Machine Learning** category, find your **watsonx.data Intelligence** instance and Ctrl-click (Cmd-click on Mac) it to open the watsonx.data Intelligence portal in a new tab. Keep the **Resource list** tab open.
 4. Click **Projects** in the left navigation, then **New project**.

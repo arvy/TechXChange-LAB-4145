@@ -52,13 +52,13 @@ def main() -> None:
     attendee_id = ask(
         "Your attendee ID (e.g. student1): ",
         ID_PATTERN,
-        "Use only letters, digits and underscores, as on your credential sheet.",
+        "Use only letters, digits and underscores, as assigned by your instructor.",
         clean_id,
     )
     bucket = ask(
-        "COS bucket name (from Infrastructure manager): ",
+        "COS bucket name (from watsonx-data-connect-details.txt): ",
         BUCKET_PATTERN,
-        "Copy the bucket name exactly as shown in the console.",
+        "Copy the bucket name exactly as shown in watsonx-data-connect-details.txt.",
         clean_bucket,
     )
 

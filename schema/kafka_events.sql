@@ -16,7 +16,7 @@
 
 -- Step 1: Create your personal schema (namespaces your tables per attendee).
 -- Replace <your-attendee-id> with your assigned ID (e.g. student1).
--- Replace <cos-bucket-name> with the COS bucket name (Infrastructure manager).
+-- Replace <cos-bucket-name> with the COS bucket name (watsonx-data-connect-details.txt).
 -- Or fill both in for you: uv run python schema/generate_sql.py
 
 CREATE SCHEMA IF NOT EXISTS demo_data.affiliate_junction_<your-attendee-id>
