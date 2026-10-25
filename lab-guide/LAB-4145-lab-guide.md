@@ -472,7 +472,8 @@ Open `.bob/mcp.json` in Bob's editor. It already holds the `affiliate-junction-i
 
 1. Click right after the closing `}` of the `affiliate-junction-ingestion` entry, type a comma (`,`), and press Enter.
 2. Paste the two entries below.
-3. Replace each `<…>` placeholder with your own values.
+3. Right-click anywhere in the file and select **Format Document**. This re-indents the pasted JSON so that it lines up with the rest of the file.
+4. Replace each `<…>` placeholder with your own values.
 
 Do not paste the outer `{ "mcpServers": { … } }` wrapper: the file already has it.
 
