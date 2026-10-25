@@ -176,15 +176,17 @@ Your workstation
 IBM Bob (desktop application)
     │  MCP stdio transport
     ├──────────────────────────► MCP Ingestion Server (local process)
-    │                                │  SASL_SSL
-    │                                └──────────► Confluent Platform
+    │                                ├─ SASL_SSL ─────────► Confluent Platform
+    │                                └─ HTTPS  /lakehouse/api ► watsonx.data SaaS (ca-tor)
     │  MCP stdio transport
-    ├──────────────────────────► watsonx.data MCP server
-    │                                │  HTTPS  /lakehouse/api
-    │                                └──────────► watsonx.data SaaS (ca-tor)
+    ├──────────────────────────► watsonx.data MCP server (local process)
+    │                                └─ HTTPS  /lakehouse/api ► watsonx.data SaaS (ca-tor)
     │  MCP stdio transport
-    └──────────────────────────► watsonx.data Intelligence MCP server
+    └──────────────────────────► watsonx.data Intelligence MCP server (local process)
+                                     └─ HTTPS ─────────► watsonx.data Intelligence SaaS (ca-tor)
 ```
+
+All three MCP servers run as processes on your workstation. Bob starts them and talks to them over stdio. Each server then calls the remote service with the credentials you configure.
 
 All credentials come from the `lab-4145-credentials.zip` file described in section 4.1. You will configure them into `.env` files in step 4.4.
 
