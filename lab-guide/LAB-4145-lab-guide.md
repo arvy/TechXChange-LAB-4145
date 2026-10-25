@@ -273,7 +273,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-> **Windows:** After installing `uv`, close Bob completely and open it again, then reopen the `TechXChange-LAB-4145` folder. A terminal that was already open does not see the new `uv` command, and neither do the MCP servers that Bob starts.
+> **Important:** If you installed `uv` just now, from Bob's terminal or any other terminal, quit Bob completely and open it again, then reopen the `TechXChange-LAB-4145` folder. Closing the terminal tab or reloading the window is not enough. Bob only sees the new `uv` command after a full restart, and the same applies to the MCP servers that Bob starts. This applies to Windows, macOS and Linux. If `uv` was already installed before you opened Bob, you do not need to restart.
 
 ```bash
 # Install all Python dependencies into a local virtualenv
@@ -417,17 +417,17 @@ Open `mcp_ingestion_server/server.py` in your editor. Take a few minutes to read
 
 ### 5.3 Connect Bob to the MCP servers
 
-This lab uses three MCP servers. You configure them in two places:
+This lab uses three MCP servers. You configure all three in one place, the workspace file `.bob/mcp.json` in the lab repository:
 
-| MCP server | Config location | Why |
+| MCP server | What it does | How it gets into `.bob/mcp.json` |
 |---|---|---|
-| `affiliate-junction-ingestion` | Workspace (`.bob/mcp.json`) | Points to your local virtualenv — path is project-specific |
-| `watsonxdata` | Global (`~/.bob/settings/mcp.json`) | Shared watsonx.data credentials, available in all projects |
-| `wxdi-mcp-server` | Global (`~/.bob/settings/mcp.json`) | Shared watsonx.data Intelligence credentials |
+| `affiliate-junction-ingestion` | Reads events from Kafka and writes them to Iceberg | Already in the repository |
+| `watsonxdata` | Runs SQL on watsonx.data | You paste it in Step 3 |
+| `wxdi-mcp-server` | Governs and catalogues data in watsonx.data Intelligence | You paste it in Step 3 |
 
-#### Step 1 — Workspace config (ingestion server)
+#### Step 1 — Check the ingestion server config
 
-The workspace config is already in the repository. Check it:
+The ingestion server entry is already in the repository. Check it:
 
 ```bash
 cat .bob/mcp.json
@@ -466,13 +466,19 @@ Copy the path printed by `pwd` (for example `/home/student1/data-intelligence-mc
 
 > **Windows:** `pwd` prints a path like `C:\Users\<your-user>\data-intelligence-mcp-server`. In the next step you must write it in JSON with **every backslash doubled**: `C:\\Users\\<your-user>\\data-intelligence-mcp-server`.
 
-#### Step 3 — Global config (watsonx.data + Intelligence servers)
+#### Step 3 — Add the watsonx.data and Intelligence servers
 
-Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below. If the file already exists, merge the `mcpServers` block — do not overwrite the whole file.
+Open `.bob/mcp.json` in Bob's editor. Replace the whole contents of the file with the JSON below. It keeps the ingestion server entry from Step 1 and adds the two new entries. Then replace each `<…>` placeholder with your own values.
 
 ```json
 {
   "mcpServers": {
+    "affiliate-junction-ingestion": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp_ingestion_server.server"],
+      "cwd": "${workspaceFolder}",
+      "alwaysAllow": ["subscribe_and_ingest"]
+    },
     "watsonxdata": {
       "command": "uvx",
       "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
@@ -503,6 +509,8 @@ Open (or create) `~/.bob/settings/mcp.json` and add the two server entries below
 > **Note:** Both servers use the same IBM Cloud API key you created in section 4.1. The `watsonxdata` server uses `uvx` and downloads automatically on first run. The `wxdi-mcp-server` runs from the patched clone you made in Step 2, started with `uv`. Replace `<absolute-path-to>/data-intelligence-mcp-server` in the `cwd` line with the path you copied. The Intelligence API endpoint for Toronto is `api.ca-tor.dai.cloud.ibm.com`, not the default `api.dataplatform.cloud.ibm.com`.
 >
 > The `LOG_FILE_PATH` line is relative to the `cwd` folder, so the server writes its log to `logs/di-mcp-server.log` inside the `data-intelligence-mcp-server` folder. Open that file if the server fails or a tool call returns an error. The path works on every operating system, so leave it as written.
+
+> **Important:** `.bob/mcp.json` is part of the cloned repository, and it now contains your API key. Do not commit it or share it.
 
 > **Windows:** A single backslash in a JSON string starts an escape sequence, so a path such as `C:\Users\...` makes the file invalid. The editor underlines it with a warning such as "Invalid unicode sequence in string", and Bob **silently drops every server in that file**. If a server disappears after you edit an `mcp.json` file, look for single backslashes first.
 
@@ -704,7 +712,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 #### Step 3 — Confirm the patched Intelligence MCP server
 
-In section 5.3 you cloned the patched `data-intelligence-mcp-server` (the `fix/find-connection-id-personal-credentials` branch) and pointed the `wxdi-mcp-server` entry in `~/.bob/settings/mcp.json` at it. Nothing more to install here. If you skipped that step, go back to section 5.3 Steps 2 and 3 now, then reload Bob.
+In section 5.3 you cloned the patched `data-intelligence-mcp-server` (the `fix/find-connection-id-personal-credentials` branch) and pointed the `wxdi-mcp-server` entry in `.bob/mcp.json` at it. Nothing more to install here. If you skipped that step, go back to section 5.3 Steps 2 and 3 now, then reload Bob.
 
 > **Why the patched version?** The published `ibm-watsonx-data-intelligence-mcp-server` package has a bug where metadata imports cannot find connections that use personal credentials. The bug is in `find_connection_id` in `app/services/tool_utils.py`: it used the `GET /v2/connections?project_id=...` list endpoint, which hides connections flagged as `personal_credentials`. The fix replaces it with a global search query (`POST /v3/search`) that correctly surfaces personal connections to their owner.
 
@@ -1004,7 +1012,7 @@ Raise your hand at any time. Instructors are circulating throughout the lab room
 Cause: The MCP server was not loaded at Bob startup.
 
 Solution:
-1. Verify `.bob/mcp.json` exists and the `cwd` path matches your home directory in the TechZone environment.
+1. Verify `.bob/mcp.json` exists in the lab repository folder, that it is valid JSON, and that the `cwd` of the `wxdi-mcp-server` entry is the folder where you cloned `data-intelligence-mcp-server`.
 2. Open the Bob command palette (`Ctrl+Shift+P`) and run **Developer: Reload Window**.
 3. Ask Bob again: `What MCP tools do you have?`
 
@@ -1096,7 +1104,7 @@ This is safe to ignore — the `CREATE SCHEMA IF NOT EXISTS` and `CREATE TABLE I
 Cause: `uv` is not installed or not on your path, or the terminal is not in the project folder.
 
 Solution:
-1. If you see `uv: command not found`, install `uv` as described in section 4.3, then open a new terminal.
+1. If you see `uv: command not found`, install `uv` as described in section 4.3, then quit Bob completely and open it again (a new terminal is not enough).
 2. If you see `No such file or directory`, your terminal is in the wrong folder. Change to the project folder, the one that contains `pyproject.toml`, and run the command again.
 3. If the script still does not run, fill in the SQL by hand. Open `schema/kafka_events.sql`, replace `<your-attendee-id>` with your ID and `<cos-bucket-name>` with the bucket name in **every** place they appear, then paste the statements of Part 1 (`CREATE SCHEMA`, `CREATE TABLE`, `SELECT`) into **Query workspace** and run them in order. Do not run a statement that still contains a `<…>` placeholder.
 
