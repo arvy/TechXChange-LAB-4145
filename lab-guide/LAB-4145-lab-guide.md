@@ -468,40 +468,48 @@ Copy the path printed by `pwd` (for example `/home/student1/data-intelligence-mc
 
 #### Step 3 — Add the watsonx.data and Intelligence servers
 
-Open `.bob/mcp.json` in Bob's editor. Replace the whole contents of the file with the JSON below. It keeps the ingestion server entry from Step 1 and adds the two new entries. Then replace each `<…>` placeholder with your own values.
+Open `.bob/mcp.json` in Bob's editor. It already holds the `affiliate-junction-ingestion` entry from Step 1. Add the two entries below to it, inside the existing `mcpServers` block:
+
+1. Click right after the closing `}` of the `affiliate-junction-ingestion` entry, type a comma (`,`), and press Enter.
+2. Paste the two entries below.
+3. Replace each `<…>` placeholder with your own values.
+
+Do not paste the outer `{ "mcpServers": { … } }` wrapper: the file already has it.
+
+```json
+"watsonxdata": {
+  "command": "uvx",
+  "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
+  "env": {
+    "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
+    "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from section 4.1>",
+    "WATSONX_DATA_INSTANCE_ID": "<Instance ID (CRN) from watsonx-data-connect-details.txt>"
+  },
+  "disabled": false
+},
+"wxdi-mcp-server": {
+  "command": "uv",
+  "args": ["run", "python", "-m", "app.main", "--transport", "stdio"],
+  "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
+  "env": {
+    "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
+    "DI_APIKEY": "<your IBM Cloud API key from section 4.1>",
+    "DI_ENV_MODE": "SaaS",
+    "LOG_FILE_PATH": "logs/di-mcp-server.log"
+  },
+  "disabled": false,
+  "alwaysAllow": []
+}
+```
+
+When you are done, the file has this shape (values left out). Check that there is a comma between the entries and none after the last one:
 
 ```json
 {
   "mcpServers": {
-    "affiliate-junction-ingestion": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "mcp_ingestion_server.server"],
-      "cwd": "${workspaceFolder}",
-      "alwaysAllow": ["subscribe_and_ingest"]
-    },
-    "watsonxdata": {
-      "command": "uvx",
-      "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
-      "env": {
-        "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
-        "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from section 4.1>",
-        "WATSONX_DATA_INSTANCE_ID": "<Instance ID (CRN) from watsonx-data-connect-details.txt>"
-      },
-      "disabled": false
-    },
-    "wxdi-mcp-server": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "app.main", "--transport", "stdio"],
-      "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
-      "env": {
-        "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
-        "DI_APIKEY": "<your IBM Cloud API key from section 4.1>",
-        "DI_ENV_MODE": "SaaS",
-        "LOG_FILE_PATH": "logs/di-mcp-server.log"
-      },
-      "disabled": false,
-      "alwaysAllow": []
-    }
+    "affiliate-junction-ingestion": { … },
+    "watsonxdata": { … },
+    "wxdi-mcp-server": { … }
   }
 }
 ```
