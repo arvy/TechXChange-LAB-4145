@@ -814,10 +814,10 @@ The job assigns data classes from profiling, but it can only assign **business t
 5. Ask Bob to re-run the enrichment job so term assignment can match the published terms to your columns. Ask for both quality steps by name. A re-run can silently switch objectives off. If it drops either quality step, section 6.4 shows scores of 100 for every column:
 
    ```
-   Re-run the enrichment job for kafka_events with the "Affiliate Junction" category. Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
+   Re-run the enrichment job for kafka_events with all glossary categories in scope, including "Affiliate Junction". Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
    ```
 
-   If Bob asks again which categories to apply, select all of them again.
+   If Bob asks again which categories to apply, select all of them again. Do not limit the job to "Affiliate Junction" alone (see the note in section 6.4).
 
    Ask Bob to confirm which objectives the job ran with. You should see `profile`, `assign_terms`, `dq_gen_constraints` and `analyze_quality`.
 
@@ -859,6 +859,10 @@ Explore what the AI found:
 #### Review and correct the data classes
 
 Data classes come from profiling a **sample** of your rows (the first 1 000 by default), not the whole table. Profiling only recognises formats it already knows. It gives a column a class when the values match one, and it leaves the column with no class when they don't. Your IDs use a custom format, so expect some of them to get a generic class such as *Text* or *Code*, or no class at all. A column whose sampled rows are mostly NULL can also end up with no class. A person has to supply a class that profiling can't infer.
+
+With all categories in scope, expect most columns to get a class, while `cookie_id` and `publisher_id` typically stay without one. That is the gap you fill in the steps below.
+
+> **If every column shows `NoClassDetected`:** The enrichment job's category scope probably left out the categories that hold the built-in data classes, for example **[uncategorized]**. A job limited to "Affiliate Junction" alone cannot assign any class. Ask Bob to re-run the enrichment job with all categories selected, then ask for the data classes again. You can also set the classes by hand in the UI, as described below.
 
 1. Ask Bob to list the data class assigned to each column of `kafka_events`, together with its confidence.
 2. Pick the columns where the class is missing or looks wrong. Low confidence is a good hint.
