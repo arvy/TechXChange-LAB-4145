@@ -766,6 +766,8 @@ Bob will:
 3. Create an enrichment job with the `profile`, `assign_terms`, `dq_gen_constraints` (identify data quality checks) and `analyze_quality` (run data quality checks) objectives. Quality scores need **both** quality objectives: without generated checks, the run reports success but produces no scores.
 4. Execute the job
 
+> **Choose all categories:** Before it creates the job, Bob may ask which glossary categories to apply, for example **Locations** and **[uncategorized]**. Select **both**. Whenever Bob offers a choice of categories, select every one of them.
+
 Wait for the job to complete (typically 2–3 minutes). Ask Bob:
 
 ```
@@ -814,6 +816,8 @@ The job assigns data classes from profiling, but it can only assign **business t
    ```
    Re-run the enrichment job for kafka_events with the "Affiliate Junction" category. Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
    ```
+
+   If Bob asks again which categories to apply, select all of them again.
 
    Ask Bob to confirm which objectives the job ran with. You should see `profile`, `assign_terms`, `dq_gen_constraints` and `analyze_quality`.
 
