@@ -244,7 +244,7 @@ If you are using your own laptop and Bob is not installed yet, download it now:
 1. Go to **[bob.ibm.com/download](https://bob.ibm.com/download)** and download the installer for your operating system.
 2. Run the installer and follow the prompts.
 
-Once Bob is open, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
+Once Bob is open, clone the lab repository using Bob's integrated terminal:
 
 ```bash
 git clone https://github.com/arvy/TechXChange-LAB-4145.git
@@ -340,7 +340,7 @@ Open the watsonx.data console through IBM Cloud:
 
 1. Sign in to IBM Cloud with the user name and password from your line in `ibm-cloud-logins.txt` (the same login you used in section 4.1).
 2. In the left menu bar, click **Resource list** (the icon that looks like a bulleted list).
-3. Scroll down to the **Databases** category and click the **watsonx.data** link.
+3. Scroll down to the **Databases** category and Ctrl-click (Cmd-click on Mac) the **watsonx.data** link to open it in a new tab. Keep the **Resource list** tab open, because you will come back to it later in the lab.
 4. Click **Open console**.
 5. In the watsonx.data console, navigate to **Query Workspace**.
 
@@ -521,7 +521,19 @@ When you are done, the file has this shape (values left out). Check that there i
 
 > **Important:** `.bob/mcp.json` is part of the cloned repository, and it now contains your API key. Do not commit it or share it.
 
-> **Windows:** A single backslash in a JSON string starts an escape sequence, so a path such as `C:\Users\...` makes the file invalid. The editor underlines it with a warning such as "Invalid unicode sequence in string", and Bob **silently drops every server in that file**. If a server disappears after you edit an `mcp.json` file, look for single backslashes first.
+> **Windows:** A single backslash in a JSON string starts an escape sequence, so a path such as `C:\Users\...` makes the file invalid. Write **every backslash as two backslashes** (`\\`). For example, the `cwd` line must look like this:
+>
+> ```json
+> "cwd": "C:\\Users\\student1\\data-intelligence-mcp-server",
+> ```
+>
+> and not like this:
+>
+> ```json
+> "cwd": "C:\Users\student1\data-intelligence-mcp-server",
+> ```
+>
+> With single backslashes, the editor underlines the path with a warning such as "Invalid unicode sequence in string", and Bob **silently drops every server in that file**. If a server disappears after you edit an `mcp.json` file, look for single backslashes first.
 
 #### Step 4 — Reload Bob
 
@@ -677,7 +689,7 @@ Before Bob can run metadata imports, you need to complete three one-time setup s
 
 1. Open the IBM Cloud login URL from your credential sheet and sign in if prompted. You should still be logged in from section 5.1.
 2. Click **Resource list** in the left navigation.
-3. Under the **AI / Machine Learning** category, find and click your **watsonx.data Intelligence** instance. This opens the watsonx.data Intelligence portal.
+3. Under the **AI / Machine Learning** category, find your **watsonx.data Intelligence** instance and Ctrl-click (Cmd-click on Mac) it to open the watsonx.data Intelligence portal in a new tab. Keep the **Resource list** tab open.
 4. Click **Projects** in the left navigation, then **New project**.
 5. Name it `Affiliate Junction - student1` (replace `student1` with your attendee ID) and click **Create**.
 
@@ -689,7 +701,7 @@ The metadata import needs a connection to your watsonx.data instance. You will c
 
 **Get the connection JSON:**
 
-1. Open the watsonx.data console, the same way as in section 5.1 (IBM Cloud **Resource list** → **Databases** → **watsonx.data** → **Open console**).
+1. Open the watsonx.data console, the same way as in section 5.1 (IBM Cloud **Resource list** → **Databases** → Ctrl-click (Cmd-click on Mac) **watsonx.data** to open it in a new tab → **Open console**). If you still have the watsonx.data console tab open from section 5.1, you can reuse it.
 2. Go to **Infrastructure Manager** → click your **Starter** Presto engine → **Details**.
 3. Click **Connect information** and copy the JSON from the **Connection details** field. It looks like:
 
