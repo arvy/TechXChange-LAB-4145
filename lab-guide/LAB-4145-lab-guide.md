@@ -811,12 +811,12 @@ The glossary is shared by all attendees and categories cannot be deleted, so eve
    Show me the tasks in my workflow inbox.
    ```
 
-   You will see **two** tasks, both titled **Publish {artifactTypePlural}**. That is the product's placeholder text, not a mistake. One task is for the generated terms and one is for your own term. Your task inbox shows only your own tasks.
+   You will see **two** tasks, both titled **Publish {artifactTypePlural}**. The title has a literal `{artifactTypePlural}` in it because the product never fills in that placeholder. It is not an error and you can ignore it. One task is for the generated terms and one is for your own term, and nothing in the title tells them apart. Your task inbox shows only your own tasks.
 
-   Ask Bob to claim and complete the first one:
+   Start with your own term. Ask Bob to claim and complete that task. Replace `student1` with your attendee ID:
 
    ```
-   Claim the first "Publish {artifactTypePlural}" task and complete it.
+   Claim the publish task for the workflow containing "Affiliate Events - student1" and complete it.
    ```
 
    Bob asks you before it acts, and the decision is yours:
@@ -826,7 +826,13 @@ The glossary is shared by all attendees and categories cannot be deleted, so eve
 
    Bob may also ask you in the chat how to complete the task, for example to approve, reject, or evaluate first. Tell it to publish. The task form has no *approve* action, so Bob uses *publish*.
 
-   Then repeat the same request for the second task. When both are done, ask Bob to list your draft terms. The list should be empty.
+   Then publish the generated terms. Only one task is left, so there is nothing to mix up:
+
+   ```
+   Show me my workflow inbox, then claim the remaining publish task and complete it.
+   ```
+
+   Answer the same questions as before. When both are done, ask Bob to list your draft terms. The list should be empty.
 
    > **Insight:** Generated terms are suggestions. A human review step decides what enters the glossary. Bob can drive the workflow, but the approval is yours.
 
