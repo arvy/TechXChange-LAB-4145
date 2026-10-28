@@ -216,7 +216,7 @@ If you are using your own laptop and Bob is not installed yet, download it now:
 
 #### Clone the lab repository
 
-Once you are signed in to Bob, clone the lab repository using Bob's integrated terminal (`Ctrl+`` ` ``):
+Once you are signed in to Bob, clone the lab repository using Bob's integrated terminal:
 
 ```bash
 git clone https://github.com/arvy/TechXChange-LAB-4145.git
@@ -486,7 +486,7 @@ Do not paste the outer `{ "mcpServers": { … } }` wrapper: the file already has
   "args": ["ibm-watsonxdata-mcp-server", "--transport", "stdio"],
   "env": {
     "WATSONX_DATA_BASE_URL": "https://console-ibm-cator.lakehouse.saas.ibm.com/lakehouse/api",
-    "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from section 4.1>",
+    "WATSONX_DATA_API_KEY": "<your IBM Cloud API key from section 4.2>",
     "WATSONX_DATA_INSTANCE_ID": "<Instance ID (CRN) from watsonx-data-connect-details.txt>"
   },
   "disabled": false
@@ -497,7 +497,7 @@ Do not paste the outer `{ "mcpServers": { … } }` wrapper: the file already has
   "cwd": "<absolute-path-to>/data-intelligence-mcp-server",
   "env": {
     "DI_SERVICE_URL": "https://api.ca-tor.dai.cloud.ibm.com",
-    "DI_APIKEY": "<your IBM Cloud API key from section 4.1>",
+    "DI_APIKEY": "<your IBM Cloud API key from section 4.2>",
     "DI_ENV_MODE": "SaaS",
     "LOG_FILE_PATH": "logs/di-mcp-server.log"
   },
