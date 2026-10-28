@@ -76,11 +76,27 @@ The data industry is in the middle of a significant shift. For years, building a
 
 In this lab, you will see what that looks like in practice. You will use **IBM Bob** (IBM's AI-powered coding assistant, available as a desktop application) as your agent, and you will connect it to three MCP servers:
 
-- An **ingestion server** you build yourself — reads from a live Confluent Kafka topic and writes directly to watsonx.data
+- An **ingestion server** you build yourself — reads from a Confluent Kafka topic and writes directly to watsonx.data
 - The **watsonx.data MCP server** — lets you run SQL, inspect schemas, and manage tables
 - The **watsonx.data Intelligence MCP server** — exposes automated metadata cataloguing and governance
 
-The use-case is **Affiliate Junction**: a realistic affiliate marketing event stream with publishers, advertisers, cookies, cohort profiles, and fraud signals — all flowing in real time.
+The use-case is **Affiliate Junction**: a realistic affiliate marketing event stream with publishers, advertisers, cookies, cohort profiles, and fraud signals.
+
+### The scenario
+
+In affiliate marketing, **publishers** (websites and apps) show ads on behalf of **advertisers** and are rewarded when those ads lead to a purchase. Visitors are tracked with a **cookie**, which links the ad a visitor saw to any purchase they make later. Publishers fall into five **cohorts** (Tech, Fashion, Health, Finance, and Travel), and each cohort has its own traffic pattern.
+
+Affiliate Junction is a simulated feed of this activity. It publishes three types of events to a Kafka topic:
+
+| Event type | What it represents |
+|---|---|
+| `impression` | An ad from an advertiser was shown to a visitor (cookie) on a publisher's site. |
+| `conversion` | A visitor (cookie) made a purchase for an advertiser. |
+| `conversion_identified` | A conversion that was matched to an earlier impression for the same cookie, within a 90-minute attribution window. It records both timestamps and the time between them (`time_to_conversion_seconds`). This is an **attributed conversion**, so no join between impressions and conversions is needed. |
+
+About 5% of the traffic carries a fraud cookie. It is not labelled, and you will find it in Exercise 3 by analysing the data you ingest.
+
+All three event types land in a single Iceberg table, with an `event_type` column to tell them apart. Fields that do not apply to an event type (for example `impression_id` on a `conversion`) are `NULL`.
 
 By the end of this 90-minute lab, you will have built an end-to-end agentic data pipeline without writing a single integration layer by hand.
 
@@ -103,7 +119,7 @@ This lab teaches you to:
 | Exercise | Duration | Outcome |
 |---|---|---|
 | Setup | ~10 min | Environment configured, repository cloned |
-| Exercise 1 — Ingest | ~25 min | Live Kafka events landing in your Iceberg table |
+| Exercise 1 — Ingest | ~25 min | Kafka events landing in your Iceberg table |
 | Exercise 2 — Govern | ~25 min | Automated metadata catalogue populated |
 | Exercise 3 — Query | ~25 min | Natural language queries running against your data |
 | Buffer | ~5 min | Q&A |
@@ -558,7 +574,7 @@ Bob should list tools from all three servers:
 Ask Bob in plain English:
 
 ```
-Show me a sample of the live affiliate junction events coming off Kafka.
+Show me a sample of the affiliate junction events coming off Kafka.
 ```
 
 Bob will call the tool and return a result like:
@@ -676,7 +692,7 @@ How many rows are in my kafka_events table, and how many events of each type?
 
 If the numbers differ from the console, check that both use the same schema (`affiliate_junction_<your student ID>`).
 
-✅ **Exercise 1 complete.** You have built a live streaming ingestion pipeline controlled entirely by an AI agent via MCP.
+✅ **Exercise 1 complete.** You have built a Kafka-to-Iceberg ingestion pipeline controlled entirely by an AI agent via MCP.
 
 ---
 
@@ -1031,7 +1047,7 @@ despite having many impressions? These might indicate attribution problems.
 >
 > **Discussion:** The fraud patterns in the dataset are configurable in the producer. By default, there are 5 fraud cookies, each permanently tied to one publisher, and about 5% of impressions carry a fraud cookie. Ask your instructor how these parameters map to real-world affiliate fraud scenarios.
 
-✅ **Exercise 3 complete.** You have queried a live Iceberg table using natural language, with Bob translating your questions into Presto SQL via MCP — no SQL knowledge required.
+✅ **Exercise 3 complete.** You have queried an Iceberg table using natural language, with Bob translating your questions into Presto SQL via MCP — no SQL knowledge required.
 
 ---
 
