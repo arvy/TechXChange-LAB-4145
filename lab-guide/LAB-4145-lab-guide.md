@@ -766,9 +766,9 @@ Bob will:
 3. Create an enrichment job with the `profile`, `assign_terms`, `dq_gen_constraints` (identify data quality checks) and `analyze_quality` (run data quality checks) objectives. Quality scores need **both** quality objectives: without generated checks, the run reports success but produces no scores.
 4. Execute the job
 
-> **Choose all categories:** Before it creates the job, Bob may ask which glossary categories to apply, for example **Locations** and **[uncategorized]**. Select **both**. Whenever Bob offers a choice of categories, select every one of them.
+> **Choose your categories carefully:** Before it creates the job, Bob may ask which glossary categories to apply. The glossary is **shared by every attendee**, so you will see other people's categories in the list. Select **Locations** and **[uncategorized]**, plus your own category once you have created it below. Never select another attendee's category.
 
-Wait for the job to complete (typically 2–3 minutes). Ask Bob:
+Wait for the job to complete (typically 5–6 minutes). Ask Bob:
 
 ```
 How is the enrichment job going?
@@ -778,24 +778,28 @@ The job assigns data classes from profiling, but it can only assign **business t
 
 #### Generate and publish business terms
 
+The glossary is shared by all attendees and categories cannot be deleted, so every name you create must include your attendee ID. Replace `student1` below with your own ID.
+
 1. Ask Bob to create a glossary category for your terms:
 
    ```
-   Create a glossary category named "Affiliate Junction".
+   Create a glossary category named "Affiliate Junction - student1".
    ```
 
 2. Ask Bob to generate draft terms from your columns:
 
    ```
-   Generate business terms for kafka_events in the "Affiliate Junction" category.
+   Generate business terms for kafka_events in the "Affiliate Junction - student1" category.
    ```
 
    Bob runs term generation, and an LLM drafts one term per column, such as *Publisher Identifier* and *Cookie Type*. These are **drafts**. They are not usable until a person publishes them.
 
+   > **Run term generation once.** Each run creates a new set of drafts, so running it twice doubles them. If Bob reports a timeout, the generation may still have finished. Ask Bob to list your draft terms before you try again.
+
 3. Add a business-level term of your own. The generated term "Kafka Events" comes from the table name, not from a column, so it describes the technology rather than the business concept. Ask Bob to create a better one:
 
    ```
-   Create a business term "Affiliate Events" in the "Affiliate Junction" category with the description
+   Create a business term "Affiliate Events - student1" in the "Affiliate Junction - student1" category with the description
    "Impression and conversion events recorded for affiliate marketing campaigns".
    ```
 
@@ -807,27 +811,42 @@ The job assigns data classes from profiling, but it can only assign **business t
    Show me the tasks in my workflow inbox.
    ```
 
-   Then ask Bob to claim the task titled **Publish {artifactTypePlural}** and complete it. When Bob completes the task, a prompt asks **you** to choose approve or reject and to enter a comment. Bob does not make that decision for you.
+   You will see **two** tasks, both titled **Publish {artifactTypePlural}**. That is the product's placeholder text, not a mistake. One task is for the generated terms and one is for your own term. Your task inbox shows only your own tasks.
+
+   Ask Bob to claim and complete the first one:
+
+   ```
+   Claim the first "Publish {artifactTypePlural}" task and complete it.
+   ```
+
+   Bob asks you before it acts, and the decision is yours:
+
+   - **Claim this task?** Choose **Confirm Claim**. **Confirm And Collect** also claims the task, and then runs a review of the term for you. You can use either.
+   - **Select the action to perform on the task.** Choose **Publish** to accept the drafts, or **Delete draft** to discard them. You can add an optional comment. Choose **Publish**.
+
+   Bob may also ask you in the chat how to complete the task, for example to approve, reject, or evaluate first. Tell it to publish. The task form has no *approve* action, so Bob uses *publish*.
+
+   Then repeat the same request for the second task. When both are done, ask Bob to list your draft terms. The list should be empty.
 
    > **Insight:** Generated terms are suggestions. A human review step decides what enters the glossary. Bob can drive the workflow, but the approval is yours.
 
 5. Ask Bob to re-run the enrichment job so term assignment can match the published terms to your columns. Ask for both quality steps by name. A re-run can silently switch objectives off. If it drops either quality step, section 6.4 shows scores of 100 for every column:
 
    ```
-   Re-run the enrichment job for kafka_events with all glossary categories in scope, including "Affiliate Junction". Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
+   Re-run the enrichment job for kafka_events with the glossary categories "Affiliate Junction - student1", "[uncategorized]" and "Locations" in scope. Keep profiling and term assignment on, and make sure data quality checks are both generated and analysed.
    ```
 
-   If Bob asks again which categories to apply, select all of them again. Do not limit the job to "Affiliate Junction" alone (see the note in section 6.4).
+   If Bob asks again which categories to apply, select those three. Do not limit the job to your own category alone (see the note in section 6.4), and do not add other attendees' categories.
 
    Ask Bob to confirm which objectives the job ran with. You should see `profile`, `assign_terms`, `dq_gen_constraints` and `analyze_quality`.
 
 6. Assign your table-level term to the table:
 
    ```
-   Assign the business term "Affiliate Events" to kafka_events.
+   Assign the business term "Affiliate Events - student1" to kafka_events.
    ```
 
-   The table can now be found by the business keywords "affiliate events", even though its technical name is `kafka_events`.
+   Ask Bob which business terms are assigned to `kafka_events` to confirm.
 
 ### 6.4 Inspect generated metadata via MCP
 
@@ -860,14 +879,14 @@ Explore what the AI found:
 
 Data classes come from profiling a **sample** of your rows (the first 1 000 by default), not the whole table. Profiling only recognises formats it already knows. It gives a column a class when the values match one, and it leaves the column with no class when they don't. Your IDs use a custom format, so expect some of them to get a generic class such as *Text* or *Code*, or no class at all. A column whose sampled rows are mostly NULL can also end up with no class. A person has to supply a class that profiling can't infer.
 
-With all categories in scope, expect most columns to get a class, while `cookie_id` and `publisher_id` typically stay without one. That is the gap you fill in the steps below.
+Expect about half of the columns to get a class. `cookie_id`, `publisher_id` and `advertiser_id` typically stay without one, and so do the mostly-NULL columns `conversion_id`, `conversion_timestamp`, `impression_timestamp` and `time_to_conversion_seconds`. It is fine to leave the mostly-NULL columns without a class, because there is too little data to classify them. Some assigned classes will also be wrong: `event_type` is likely to get *Organization Name*, although it only holds a few fixed event names. Check the AI's work.
 
-> **If every column shows `NoClassDetected`:** The enrichment job's category scope probably left out the categories that hold the built-in data classes, for example **[uncategorized]**. A job limited to "Affiliate Junction" alone cannot assign any class. Ask Bob to re-run the enrichment job with all categories selected, then ask for the data classes again. You can also set the classes by hand in the UI, as described below.
+> **If every column shows `NoClassDetected`:** The enrichment job's category scope probably left out the categories that hold the built-in data classes, for example **[uncategorized]**. A job limited to your own category alone cannot assign any class. Ask Bob to re-run the enrichment job with your category, **[uncategorized]** and **Locations** selected, then ask for the data classes again. You can also set the classes by hand in the UI, as described below.
 
 1. Ask Bob to list the data class assigned to each column of `kafka_events`, together with its confidence.
-2. Pick the columns where the class is missing or looks wrong. Low confidence is a good hint.
-3. Correct them in the watsonx.data Intelligence UI: open the `kafka_events` asset in your project, go to its column view and change the data class of each wrong column.
-4. Ask Bob the same question again to confirm your corrections are in place. Bob's answer marks a class you set by hand as set by the user.
+2. Pick the columns where the class looks wrong. Low confidence is a good hint.
+
+> **Stretch goal:** If you are on track, correct a few classes by hand in the watsonx.data Intelligence UI. Open the `kafka_events` asset in your project, go to its column view and change the data class of `event_type` and of the ID columns that have none (`cookie_id`, `publisher_id`, `advertiser_id`). Then ask Bob the same question again. Bob's answer marks a class you set by hand as set by the user.
 
 > **Insight:** AI-generated metadata is a starting point. Profiling samples the data, so it can be wrong, unstable or silent, and a person has to review it before anyone relies on it.
 
