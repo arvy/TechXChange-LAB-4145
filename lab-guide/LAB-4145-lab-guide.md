@@ -1037,11 +1037,17 @@ despite having many impressions? These might indicate attribution problems.
 
 ## 8. Did not finish the lab?
 
-If you did not complete all exercises during the session, you can continue in the **self-paced lab room** (check the TechXchange schedule for times and location).
+No problem — the Windows VM from today's session will not be available after the lab ends, but **all the work you did in watsonx.data and watsonx.data Intelligence is preserved until end of week** in the shared TechZone environment.
 
-Your TechZone environment and watsonx.data schema will remain active for 48 hours after the session. The events stay in the Kafka topic, so you can load them again with a new `consumer_group_id`.
+To continue on your own laptop, grab the two short-links shown on the screen by your instructor (lab guide and credentials). Then:
 
-To resume, simply re-open Bob, navigate to the `TechXChange-LAB-4145` folder, and continue — your `.env` files and virtualenv are still in place.
+1. Follow the lab guide from the beginning of **Section 2 (Setup)** to install prerequisites and clone the repository onto your laptop.
+2. Use the credentials short-link to download your `.env` configuration and complete the setup as described in the guide.
+3. Open the repository folder in Bob and pick up from wherever you left off — your schemas, tables, and ingested data in watsonx.data and watsonx.data Intelligence are still there.
+
+The events stay in the Kafka topic, so you can load additional batches at any time using a new `consumer_group_id`.
+
+> **Coming soon:** This lab will also be published as a TechZone collection, so you will be able to spin up a fresh environment and run through it entirely at your own pace.
 
 ---
 
